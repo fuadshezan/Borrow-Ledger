@@ -65,8 +65,7 @@ class GoogleAuthManager(private val context: Context) {
 
     /**
      * Builds the Google Sign-In intent that launches the system account picker.
-     * Requests the Google ID token (for Firebase auth) and email/profile.
-     * Sheets/Drive OAuth scopes are acquired on-demand in acquireAccessToken().
+     * Requests the Google ID token (for Firebase auth), profile, and Google Sheets + Drive scopes.
      */
     fun buildSignInIntent(): Intent {
         val serverClientId = getWebClientId()
@@ -74,6 +73,10 @@ class GoogleAuthManager(private val context: Context) {
             .requestIdToken(serverClientId)
             .requestEmail()
             .requestProfile()
+            .requestScopes(
+                Scope(OAUTH_SCOPES[0]),  // spreadsheets
+                Scope(OAUTH_SCOPES[1])   // drive.file
+            )
             .build()
         return GoogleSignIn.getClient(context, gso).signInIntent
     }
@@ -123,6 +126,43 @@ class GoogleAuthManager(private val context: Context) {
         }
 
     /**
+     * Retrieves a valid OAuth 2.0 access token for Google Sheets & Drive.
+     * Uses the last signed-in Google account and requests a token via [GoogleAuthUtil].
+     * If the token was previously cached and needs refreshing, [forceRefresh] will invalidate it first.
+     */
+    suspend fun getOrRefreshAccessToken(forceRefresh: Boolean = false): String? =
+        withContext(Dispatchers.IO) {
+            try {
+                val account = GoogleSignIn.getLastSignedInAccount(context)
+                val androidAccount = account?.account
+                if (androidAccount == null) {
+                    android.util.Log.w("GoogleAuthManager", "No Google account found. Sign-in required.")
+                    return@withContext null
+                }
+
+                val scopeString = "oauth2:${OAUTH_SCOPES.joinToString(" ")}"
+
+                if (forceRefresh) {
+                    val currentToken = _userState.value.accessToken
+                    if (currentToken.isNotBlank()) {
+                        try {
+                            GoogleAuthUtil.clearToken(context, currentToken)
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                val token = GoogleAuthUtil.getToken(context, androidAccount, scopeString)
+                if (!token.isNullOrBlank()) {
+                    updateAccessToken(token)
+                }
+                token
+            } catch (e: Exception) {
+                android.util.Log.e("GoogleAuthManager", "Token acquisition error: ${e.message}", e)
+                null
+            }
+        }
+
+    /**
      * Uses [GoogleAuthUtil.getToken] to fetch a short-lived OAuth 2.0 access token
      * for the Sheets and Drive scopes. Returns an empty string on failure so callers
      * can surface a sync error rather than crashing at auth time.
@@ -131,10 +171,10 @@ class GoogleAuthManager(private val context: Context) {
         val androidAccount = account.account ?: return ""
         return try {
             val scopeString = "oauth2:${OAUTH_SCOPES.joinToString(" ")}"
-            GoogleAuthUtil.getToken(context, androidAccount, scopeString)
+            val token = GoogleAuthUtil.getToken(context, androidAccount, scopeString)
+            token ?: ""
         } catch (e: Exception) {
-            // Token acquisition can fail if consent was not fully granted.
-            // Return empty string; sync will report the error via its error state.
+            android.util.Log.e("GoogleAuthManager", "Initial acquireAccessToken error: ${e.message}", e)
             ""
         }
     }

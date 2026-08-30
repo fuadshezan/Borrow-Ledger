@@ -2,6 +2,7 @@ package com.example.data.sync
 
 import android.content.Context
 import com.example.data.local.AppDatabase
+import com.example.data.local.entity.SyncMetadataEntity
 import com.example.data.repository.LendingRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,12 +75,22 @@ class HybridSyncManager(
     )
 
     init {
-        // Observe network state: auto-sync when internet comes back online
+        // 1. Restore tracked spreadsheet metadata from Room DB if present
+        scope.launch {
+            try {
+                val meta = db.syncMetadataDao().getMetadata()
+                if (meta != null && authManager.userState.value.spreadsheetId.isBlank()) {
+                    authManager.saveSpreadsheetId(meta.spreadsheetId)
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 2. Observe network state: auto-sync when internet comes back online
         scope.launch {
             var wasOffline = false
             networkMonitor.isOnline.collect { online ->
                 if (online && wasOffline) {
-                    _statusMessage.value = "Internet connection restored. Syncing..."
+                    _statusMessage.value = "Internet restored. Syncing with Google Sheets..."
                     if (_autoSyncEnabled.value && authManager.userState.value.isSignedIn) {
                         syncNow(isManual = false)
                     }
@@ -87,7 +98,7 @@ class HybridSyncManager(
                     wasOffline = true
                     if (_pendingChangesCount.value > 0) {
                         _syncStatus.value = SyncStatus.OFFLINE_QUEUED
-                        _statusMessage.value = "${_pendingChangesCount.value} changes saved locally (will sync when online)"
+                        _statusMessage.value = "${_pendingChangesCount.value} changes saved locally (offline mode)"
                     }
                 }
                 if (online) {
@@ -113,7 +124,7 @@ class HybridSyncManager(
             }
         } else if (!networkMonitor.isCurrentlyOnline()) {
             _syncStatus.value = SyncStatus.OFFLINE_QUEUED
-            _statusMessage.value = "$count changes saved locally (offline mode)"
+            _statusMessage.value = "$count changes saved locally (will sync when online)"
         }
     }
 
@@ -128,49 +139,85 @@ class HybridSyncManager(
 
             if (!networkMonitor.isCurrentlyOnline()) {
                 _syncStatus.value = SyncStatus.OFFLINE_QUEUED
-                _statusMessage.value = "No internet connection. Changes saved locally in offline database."
-                onResult(false, "Device is offline. Changes stored safely locally.")
+                _statusMessage.value = "Device is offline. Changes stored safely in local database."
+                onResult(false, "Device is offline. Changes stored safely.")
                 return@launch
             }
 
             _syncStatus.value = SyncStatus.SYNCING
-            _statusMessage.value = "Syncing with Google Sheets..."
+            _statusMessage.value = "Connecting to Google Drive & Sheets..."
 
             try {
-                // 1. Get or create spreadsheet
+                // 1. Obtain a fresh / valid OAuth Access Token
+                var token = authManager.getOrRefreshAccessToken(forceRefresh = false)
+                if (token.isNullOrBlank()) {
+                    token = authManager.getOrRefreshAccessToken(forceRefresh = true)
+                }
+
+                if (token.isNullOrBlank()) {
+                    _syncStatus.value = SyncStatus.ERROR
+                    val errMsg = "Google OAuth authorization required. Please reconnect your Google account in Settings."
+                    _statusMessage.value = errMsg
+                    onResult(false, errMsg)
+                    return@launch
+                }
+
+                // 2. Find or create the Google Spreadsheet on user's Google Drive
+                // If existing sheet is not found/deleted, a brand-new sheet is automatically created.
                 val sheetResult = sheetsService.getOrCreateDatabaseSpreadsheet(
-                    accessToken = user.accessToken.ifBlank { "dummy_token" },
+                    accessToken = token,
                     existingId = user.spreadsheetId.ifBlank { null }
                 )
 
-                val sheetId = sheetResult.getOrElse {
-                    // If OAuth token is not configured or in sandbox, handle gracefully
-                    if (user.spreadsheetId.isNotBlank()) user.spreadsheetId else "simulated_sheet_id_${System.currentTimeMillis()}"
+                if (sheetResult.isFailure) {
+                    val err = sheetResult.exceptionOrNull()?.message ?: "Could not access Google Sheets"
+                    _syncStatus.value = SyncStatus.ERROR
+                    _statusMessage.value = err
+                    onResult(false, err)
+                    return@launch
                 }
-                authManager.saveSpreadsheetId(sheetId)
 
-                // 2. Fetch local data from Room
+                val sheetId = sheetResult.getOrThrow()
+                val sheetUrl = "https://docs.google.com/spreadsheets/d/$sheetId"
+
+                // 3. Persist sheet metadata both in memory/Prefs and in local Room DB table
+                authManager.saveSpreadsheetId(sheetId)
+                try {
+                    db.syncMetadataDao().saveMetadata(
+                        SyncMetadataEntity(
+                            key = "active_spreadsheet",
+                            spreadsheetId = sheetId,
+                            spreadsheetUrl = sheetUrl,
+                            spreadsheetTitle = GoogleSheetsService.SPREADSHEET_TITLE,
+                            userEmail = user.email,
+                            lastSyncedAt = System.currentTimeMillis()
+                        )
+                    )
+                } catch (_: Exception) {}
+
+                // 4. Fetch local Room DB state
                 val people = repository.allPeopleSummaries.first()
                 val loans = repository.allLoansWithDetails.first()
                 val payments = db.paymentDao().getAllPayments().first()
 
-                // 3. Upload to Google Sheets
-                if (user.accessToken.isNotBlank()) {
-                    val uploadResult = sheetsService.syncAllDataToSheet(
-                        accessToken = user.accessToken,
-                        spreadsheetId = sheetId,
-                        people = people,
-                        loans = loans,
-                        payments = payments
-                    )
-                    if (uploadResult.isFailure) {
-                        // Mark as updated locally but notify
-                        val errMsg = uploadResult.exceptionOrNull()?.message ?: "Sync error"
-                        _statusMessage.value = "Google Sheet linked ($sheetId). Offline fallback active."
-                    }
+                // 5. Upload to Google Sheets (People, Loans, Payments)
+                val uploadResult = sheetsService.syncAllDataToSheet(
+                    accessToken = token,
+                    spreadsheetId = sheetId,
+                    people = people,
+                    loans = loans,
+                    payments = payments
+                )
+
+                if (uploadResult.isFailure) {
+                    val err = uploadResult.exceptionOrNull()?.message ?: "Upload to Google Sheet failed"
+                    _syncStatus.value = SyncStatus.ERROR
+                    _statusMessage.value = err
+                    onResult(false, err)
+                    return@launch
                 }
 
-                // 4. Update sync state
+                // 6. Update success sync state
                 val now = System.currentTimeMillis()
                 _lastSyncTime.value = now
                 _pendingChangesCount.value = 0
@@ -180,8 +227,8 @@ class HybridSyncManager(
                     .apply()
 
                 _syncStatus.value = SyncStatus.SUCCESS
-                _statusMessage.value = "Successfully synced ${people.size} people, ${loans.size} loans with Google Sheet!"
-                onResult(true, "Sync complete!")
+                _statusMessage.value = "Synced ${people.size} people, ${loans.size} loans with Google Drive ✓"
+                onResult(true, "Successfully synced with Google Sheet!")
             } catch (e: Exception) {
                 _syncStatus.value = SyncStatus.ERROR
                 val msg = e.message ?: "Failed to sync"
@@ -194,8 +241,12 @@ class HybridSyncManager(
     fun restoreFromGoogleSheet(onResult: (Boolean, String) -> Unit) {
         scope.launch {
             val user = authManager.userState.value
-            if (!user.isSignedIn || user.spreadsheetId.isBlank()) {
-                onResult(false, "No Google Sheet linked yet")
+            val effectiveSheetId = user.spreadsheetId.ifBlank {
+                db.syncMetadataDao().getMetadata()?.spreadsheetId ?: ""
+            }
+
+            if (!user.isSignedIn || effectiveSheetId.isBlank()) {
+                onResult(false, "No Google Sheet linked yet. Please perform a sync first.")
                 return@launch
             }
 
@@ -205,17 +256,30 @@ class HybridSyncManager(
             }
 
             _syncStatus.value = SyncStatus.SYNCING
-            _statusMessage.value = "Downloading from Google Sheet..."
+            _statusMessage.value = "Downloading data from Google Sheet..."
+
+            var token = authManager.getOrRefreshAccessToken(forceRefresh = false)
+            if (token.isNullOrBlank()) {
+                token = authManager.getOrRefreshAccessToken(forceRefresh = true)
+            }
+
+            if (token.isNullOrBlank()) {
+                _syncStatus.value = SyncStatus.ERROR
+                val errMsg = "OAuth authorization expired. Please reconnect in Settings."
+                _statusMessage.value = errMsg
+                onResult(false, errMsg)
+                return@launch
+            }
 
             val readResult = sheetsService.readSpreadsheetData(
-                accessToken = user.accessToken,
-                spreadsheetId = user.spreadsheetId
+                accessToken = token,
+                spreadsheetId = effectiveSheetId
             )
 
             readResult.fold(
                 onSuccess = { (people, loans, payments) ->
                     withContext(Dispatchers.IO) {
-                        // Insert imported records
+                        // Insert imported records into local Room DB
                         people.forEach { db.personDao().insertPerson(it) }
                         loans.forEach { db.loanDao().insertLoan(it) }
                         payments.forEach { db.paymentDao().insertPayment(it) }
@@ -226,8 +290,9 @@ class HybridSyncManager(
                 },
                 onFailure = {
                     _syncStatus.value = SyncStatus.ERROR
-                    _statusMessage.value = it.message ?: "Download failed"
-                    onResult(false, it.message ?: "Download failed")
+                    val errMsg = it.message ?: "Download from Google Sheet failed"
+                    _statusMessage.value = errMsg
+                    onResult(false, errMsg)
                 }
             )
         }

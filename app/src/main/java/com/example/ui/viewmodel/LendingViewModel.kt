@@ -425,6 +425,9 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
     fun signOutGoogle() {
         viewModelScope.launch {
             authManager.signOut()
+            try {
+                db.syncMetadataDao().deleteMetadata()
+            } catch (_: Exception) {}
             _snackbarEvent.emit("Signed out of Google account")
         }
     }
