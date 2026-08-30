@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Card / Shield Background -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M32,28 L76,28 C80.4,28 84,31.6 84,36 L84,72 C84,76.4 80.4,80 76,80 L32,80 C27.6,80 24,76.4 24,72 L24,36 C24,31.6 27.6,28 32,28 Z" />
+    <!-- Inner Accent -->
+    <path
+        android:fillColor="#059669"
+        android:pathData="M28,66 L80,66 C80,73 74,78 68,78 L40,78 C34,78 28,73 28,66 Z" />
+    <!-- Taka / Currency Symbol & Transfer arrows -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,36 C47.4,36 42,41.4 42,48 C42,54.6 47.4,60 54,60 C60.6,60 66,54.6 66,48 C66,41.4 60.6,36 54,36 Z M54,42 C57.3,42 60,44.7 60,48 C60,51.3 57.3,54 54,54 C50.7,54 48,51.3 48,48 C48,44.7 50.7,42 54,42 Z" />
+    <!-- Horizontal Center Bar representing Currency Sign -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,46 L68,46 C69.1,46 70,46.9 70,48 C70,49.1 69.1,50 68,50 L40,50 C38.9,50 38,49.1 38,48 C38,46.9 38.9,46 40,46 Z" />
+    <!-- Lending Arrow Right (Top) -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M34,34 L48,34 L44,30 L46,28 L54,35 L46,42 L44,40 L48,36 L34,36 Z" />
+    <!-- Repayment Arrow Left (Bottom) -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M74,62 L60,62 L64,66 L62,68 L54,61 L62,54 L64,56 L60,60 L74,60 Z" />
+</vector>
