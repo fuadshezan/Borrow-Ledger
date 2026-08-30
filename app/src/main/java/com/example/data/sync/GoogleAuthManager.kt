@@ -31,17 +31,26 @@ class GoogleAuthManager(private val context: Context) {
 
     companion object {
         /**
-         * Web Client ID (OAuth 2.0 client) from Firebase Console.
+         * Web Client ID (OAuth 2.0 client) from Firebase Console (borrow-money-11b9a).
          * Used as the serverClientId for Google Sign-In and Firebase credential.
          */
         private const val WEB_CLIENT_ID =
-            "30361113842-mhom26a8fusdvsrm1rkb3cvugbphmesf.apps.googleusercontent.com"
+            "740333374448-u1s8n2hne03hmnbgdmpef7kjgknt58sn.apps.googleusercontent.com"
 
         /** Google API scopes required for Sheets + Drive file access. */
         private val OAUTH_SCOPES = listOf(
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive.file"
         )
+    }
+
+    private fun getWebClientId(): String {
+        val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+        return if (resId != 0) {
+            try { context.getString(resId) } catch (_: Exception) { WEB_CLIENT_ID }
+        } else {
+            WEB_CLIENT_ID
+        }
     }
 
     private val prefs = context.getSharedPreferences("google_sync_prefs", Context.MODE_PRIVATE)
@@ -56,17 +65,15 @@ class GoogleAuthManager(private val context: Context) {
 
     /**
      * Builds the Google Sign-In intent that launches the system account picker.
-     * Requests the Google ID token (for Firebase auth) and OAuth scopes (for Sheets/Drive REST APIs).
+     * Requests the Google ID token (for Firebase auth) and email/profile.
+     * Sheets/Drive OAuth scopes are acquired on-demand in acquireAccessToken().
      */
     fun buildSignInIntent(): Intent {
+        val serverClientId = getWebClientId()
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(WEB_CLIENT_ID)
+            .requestIdToken(serverClientId)
             .requestEmail()
             .requestProfile()
-            .requestScopes(
-                Scope(OAUTH_SCOPES[0]),  // spreadsheets
-                Scope(OAUTH_SCOPES[1])   // drive.file
-            )
             .build()
         return GoogleSignIn.getClient(context, gso).signInIntent
     }
@@ -121,9 +128,10 @@ class GoogleAuthManager(private val context: Context) {
      * can surface a sync error rather than crashing at auth time.
      */
     private fun acquireAccessToken(account: GoogleSignInAccount): String {
+        val androidAccount = account.account ?: return ""
         return try {
             val scopeString = "oauth2:${OAUTH_SCOPES.joinToString(" ")}"
-            GoogleAuthUtil.getToken(context, account.account, scopeString)
+            GoogleAuthUtil.getToken(context, androidAccount, scopeString)
         } catch (e: Exception) {
             // Token acquisition can fail if consent was not fully granted.
             // Return empty string; sync will report the error via its error state.

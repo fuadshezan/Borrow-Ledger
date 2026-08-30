@@ -22,10 +22,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.aistudio.lendingtracker.qvxmp" />
+                  <option name="mobileSdkAppId" value="1:740333374448:android:2b54b8a152051f1b3c6b35" />
+                  <option name="projectId" value="borrow-money-11b9a" />
+                  <option name="projectNumber" value="740333374448" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
