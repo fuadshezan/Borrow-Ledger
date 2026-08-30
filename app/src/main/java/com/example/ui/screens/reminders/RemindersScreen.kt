@@ -1,6 +1,7 @@
 package com.example.ui.screens.reminders
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,12 +20,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -33,9 +31,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -61,15 +57,7 @@ import com.example.data.model.LoanStatus
 import com.example.data.model.ReminderItem
 import com.example.ui.components.EmptyState
 import com.example.ui.components.StatusBadge
-import com.example.ui.theme.FinanceAmberDark
-import com.example.ui.theme.FinanceAmberLight
-import com.example.ui.theme.FinanceAmberBorder
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.FinanceRedBorder
-import com.example.ui.theme.Slate200
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -182,18 +170,18 @@ private fun ReminderCard(
 ) {
     val isOverdue = item.status == LoanStatus.OVERDUE
 
-    val borderColor = if (item.isCompleted) Slate200
-    else if (isOverdue) FinanceRedBorder
-    else FinanceAmberBorder
+    val borderColor = if (item.isCompleted) AppTheme.colors.cardBorder
+    else if (isOverdue) AppTheme.colors.redBorder
+    else AppTheme.colors.amberBorder
+
+    val cardBg = if (item.isCompleted) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+    else if (isOverdue) AppTheme.colors.redContainer
+    else AppTheme.colors.amberContainer
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (item.isCompleted) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
-            else if (isOverdue) FinanceRedLight.copy(alpha = 0.7f)
-            else FinanceAmberLight.copy(alpha = 0.5f)
-        ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -217,6 +205,7 @@ private fun ReminderCard(
                         text = item.personName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
                     )
                     Text(
@@ -231,7 +220,7 @@ private fun ReminderCard(
                         text = Formatters.formatMoney(item.outstandingAmount, currencySymbol),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = if (isOverdue) FinanceRedDark else MaterialTheme.colorScheme.primary
+                        color = if (isOverdue) AppTheme.colors.redText else MaterialTheme.colorScheme.primary
                     )
                     StatusBadge(status = item.status)
                 }

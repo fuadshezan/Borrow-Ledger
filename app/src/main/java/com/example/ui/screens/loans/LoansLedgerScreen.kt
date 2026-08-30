@@ -1,5 +1,6 @@
 package com.example.ui.screens.loans
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,13 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Search
@@ -59,10 +57,7 @@ import com.example.ui.components.EmptyState
 import com.example.ui.components.LoanProgressBar
 import com.example.ui.components.PaymentMethodBadge
 import com.example.ui.components.StatusBadge
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate200
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 import com.example.ui.viewmodel.LoanFilterOption
 
@@ -93,8 +88,8 @@ fun LoansLedgerScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToAddLoan,
-                containerColor = Indigo600,
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.testTag("loans_fab_add")
             ) {
@@ -209,7 +204,7 @@ private fun LoanLedgerCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -233,6 +228,7 @@ private fun LoanLedgerCard(
                         text = loan.personName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -263,7 +259,8 @@ private fun LoanLedgerCard(
                     Text(
                         text = Formatters.formatMoney(loan.originalAmount, currencySymbol),
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Column {
@@ -272,7 +269,7 @@ private fun LoanLedgerCard(
                         text = Formatters.formatMoney(loan.totalPaid, currencySymbol),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
-                        color = FinanceGreenDark
+                        color = AppTheme.colors.greenText
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -281,7 +278,7 @@ private fun LoanLedgerCard(
                         text = Formatters.formatMoney(loan.outstanding, currencySymbol),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = if (loan.isSettled) FinanceGreenDark else if (loan.status == com.example.data.model.LoanStatus.OVERDUE) FinanceRedDark else MaterialTheme.colorScheme.primary
+                        color = if (loan.isSettled) AppTheme.colors.greenText else if (loan.status == com.example.data.model.LoanStatus.OVERDUE) AppTheme.colors.redText else MaterialTheme.colorScheme.primary
                     )
                 }
             }

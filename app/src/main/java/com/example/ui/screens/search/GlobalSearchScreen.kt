@@ -1,5 +1,6 @@
 package com.example.ui.screens.search
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,12 +55,7 @@ import com.example.data.model.Formatters
 import com.example.ui.components.DirectionBadge
 import com.example.ui.components.EmptyState
 import com.example.ui.components.StatusBadge
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.Indigo50
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate200
-import com.example.ui.theme.Slate700
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -173,7 +169,7 @@ fun GlobalSearchScreen(
                             Card(
                                 shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                                border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -187,14 +183,14 @@ fun GlobalSearchScreen(
                                         modifier = Modifier
                                             .size(36.dp)
                                             .clip(CircleShape)
-                                            .background(Indigo50),
+                                            .background(AppTheme.colors.iconBoxBg),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Default.Person, contentDescription = null, tint = Indigo600, modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.Person, contentDescription = null, tint = AppTheme.colors.iconBoxTint, modifier = Modifier.size(20.dp))
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(person.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text(person.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                                         if (person.phone.isNotBlank()) {
                                             Text(person.phone, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
@@ -203,7 +199,7 @@ fun GlobalSearchScreen(
                                         text = Formatters.formatMoney(person.totalLentOutstanding, currency),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
-                                        color = FinanceGreenDark
+                                        color = AppTheme.colors.greenText
                                     )
                                 }
                             }
@@ -217,14 +213,14 @@ fun GlobalSearchScreen(
                                 text = "Loans (${searchResults.loans.size})",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Indigo600
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         items(searchResults.loans, key = { "loan_${it.id}" }) { loan ->
                             Card(
                                 shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                                border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -238,15 +234,15 @@ fun GlobalSearchScreen(
                                         modifier = Modifier
                                             .size(36.dp)
                                             .clip(CircleShape)
-                                            .background(Indigo50),
+                                            .background(AppTheme.colors.iconBoxBg),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Default.Receipt, contentDescription = null, tint = Indigo600, modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.Receipt, contentDescription = null, tint = AppTheme.colors.iconBoxTint, modifier = Modifier.size(20.dp))
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(loan.personName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text(loan.personName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                                             Spacer(modifier = Modifier.width(6.dp))
                                             DirectionBadge(direction = loan.direction)
                                         }
@@ -261,7 +257,7 @@ fun GlobalSearchScreen(
                                             text = Formatters.formatMoney(loan.outstanding, currency),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
-                                            color = if (loan.isSettled) FinanceGreenDark else Indigo600
+                                            color = if (loan.isSettled) AppTheme.colors.greenText else MaterialTheme.colorScheme.primary
                                         )
                                         StatusBadge(status = loan.status)
                                     }
@@ -277,14 +273,14 @@ fun GlobalSearchScreen(
                                 text = "Payments (${searchResults.payments.size})",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Indigo600
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                         items(searchResults.payments, key = { "payment_${it.id}" }) { p ->
                             Card(
                                 shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                                border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -298,14 +294,14 @@ fun GlobalSearchScreen(
                                         modifier = Modifier
                                             .size(36.dp)
                                             .clip(CircleShape)
-                                            .background(FinanceGreenLight),
+                                            .background(AppTheme.colors.greenContainer),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Default.Payment, contentDescription = null, tint = FinanceGreenDark, modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.Payment, contentDescription = null, tint = AppTheme.colors.greenText, modifier = Modifier.size(20.dp))
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(p.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Text(p.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                                         Text(
                                             text = "${Formatters.formatDate(p.date)} • ${p.paymentMethod}",
                                             fontSize = 12.sp,
@@ -316,7 +312,7 @@ fun GlobalSearchScreen(
                                         text = "+ ${Formatters.formatMoney(p.amount, currency)}",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
-                                        color = FinanceGreenDark
+                                        color = AppTheme.colors.greenText
                                     )
                                 }
                             }

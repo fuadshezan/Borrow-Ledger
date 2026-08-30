@@ -1,5 +1,6 @@
 package com.example.ui.screens.loans
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,21 +67,7 @@ import com.example.ui.components.DirectionBadge
 import com.example.ui.components.LoanProgressBar
 import com.example.ui.components.PaymentMethodBadge
 import com.example.ui.components.StatusBadge
-import com.example.ui.theme.FinanceAmberDark
-import com.example.ui.theme.FinanceAmberLight
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinanceGreenBorder
-import com.example.ui.theme.FinanceRed
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.FinanceRedBorder
-import com.example.ui.theme.FinanceAmberBorder
-import com.example.ui.theme.Indigo50
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate200
-import com.example.ui.theme.Slate700
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,7 +112,7 @@ fun LoanDetailScreen(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Loan",
-                            tint = FinanceRed
+                            tint = AppTheme.colors.redText
                         )
                     }
                 },
@@ -149,7 +136,7 @@ fun LoanDetailScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                    border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -164,13 +151,13 @@ fun LoanDetailScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Indigo50),
+                                .background(AppTheme.colors.iconBoxBg),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = loan.personName.take(1).uppercase(),
                                 fontWeight = FontWeight.Bold,
-                                color = Indigo600
+                                color = AppTheme.colors.iconBoxTint
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
@@ -178,7 +165,8 @@ fun LoanDetailScreen(
                             Text(
                                 text = loan.personName,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             if (loan.personPhone.isNotBlank()) {
                                 Text(
@@ -205,11 +193,11 @@ fun LoanDetailScreen(
                 Card(
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (loan.isSettled) FinanceGreenLight else MaterialTheme.colorScheme.surface
+                        containerColor = if (loan.isSettled) AppTheme.colors.greenContainer else MaterialTheme.colorScheme.surface
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         1.dp,
-                        if (loan.isSettled) FinanceGreenBorder else Slate200
+                        if (loan.isSettled) AppTheme.colors.greenBorder else AppTheme.colors.cardBorder
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -223,7 +211,7 @@ fun LoanDetailScreen(
                             Text(
                                 text = if (loan.direction == LoanDirection.LENT) "Remaining to Receive" else "Remaining to Pay",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (loan.isSettled) FinanceGreenDark else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (loan.isSettled) AppTheme.colors.greenText else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             StatusBadge(status = loan.status)
                         }
@@ -234,7 +222,7 @@ fun LoanDetailScreen(
                             text = Formatters.formatMoney(loan.outstanding, currency),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (loan.isSettled) FinanceGreenDark else if (loan.status == LoanStatus.OVERDUE) FinanceRedDark else Indigo600
+                            color = if (loan.isSettled) AppTheme.colors.greenText else if (loan.status == LoanStatus.OVERDUE) AppTheme.colors.redText else MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -245,7 +233,8 @@ fun LoanDetailScreen(
                                 Text(
                                     text = Formatters.formatMoney(loan.originalAmount, currency),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Column(modifier = Modifier.weight(1f)) {
@@ -254,7 +243,7 @@ fun LoanDetailScreen(
                                     text = Formatters.formatMoney(loan.totalPaid, currency),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    color = FinanceGreenDark
+                                    color = AppTheme.colors.greenText
                                 )
                             }
                         }
@@ -269,22 +258,22 @@ fun LoanDetailScreen(
             item {
                 if (loan.status == LoanStatus.OVERDUE) {
                     Surface(
-                        color = FinanceRedLight,
+                        color = AppTheme.colors.redContainer,
                         shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, FinanceRedBorder),
+                        border = BorderStroke(1.dp, AppTheme.colors.redBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Warning, contentDescription = null, tint = FinanceRedDark)
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = AppTheme.colors.redText)
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
                                     text = "Overdue by ${loan.daysOverdue} days!",
                                     fontWeight = FontWeight.Bold,
-                                    color = FinanceRedDark,
+                                    color = AppTheme.colors.redText,
                                     fontSize = 13.sp
                                 )
                                 Text(
@@ -297,22 +286,22 @@ fun LoanDetailScreen(
                     }
                 } else if (loan.status == LoanStatus.DUE_SOON) {
                     Surface(
-                        color = FinanceAmberLight,
+                        color = AppTheme.colors.amberContainer,
                         shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, FinanceAmberBorder),
+                        border = BorderStroke(1.dp, AppTheme.colors.amberBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.CalendarToday, contentDescription = null, tint = FinanceAmberDark)
+                            Icon(Icons.Default.CalendarToday, contentDescription = null, tint = AppTheme.colors.amberText)
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
                                     text = "Due soon in ${loan.daysUntilDue ?: 0} days",
                                     fontWeight = FontWeight.Bold,
-                                    color = FinanceAmberDark,
+                                    color = AppTheme.colors.amberText,
                                     fontSize = 13.sp
                                 )
                                 Text(
@@ -332,7 +321,7 @@ fun LoanDetailScreen(
                     Button(
                         onClick = { onNavigateToAddPayment(loan.id) },
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
@@ -354,7 +343,7 @@ fun LoanDetailScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                    border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -365,7 +354,8 @@ fun LoanDetailScreen(
                         Text(
                             text = "Loan Information",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         MetadataRow(label = "Purpose / Reason", value = loan.purpose.ifBlank { "Not specified" })
@@ -397,7 +387,8 @@ fun LoanDetailScreen(
                     Text(
                         text = "Repayment History (${loan.payments.size})",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -407,6 +398,7 @@ fun LoanDetailScreen(
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Box(modifier = Modifier.padding(20.dp), contentAlignment = Alignment.Center) {
@@ -495,7 +487,7 @@ private fun PaymentHistoryItem(
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -509,13 +501,13 @@ private fun PaymentHistoryItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(FinanceGreenLight),
+                    .background(AppTheme.colors.greenContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
-                    tint = FinanceGreenDark,
+                    tint = AppTheme.colors.greenText,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -527,7 +519,7 @@ private fun PaymentHistoryItem(
                     text = "+ ${Formatters.formatMoney(payment.amount, currencySymbol)}",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = FinanceGreenDark
+                    color = AppTheme.colors.greenText
                 )
                 Text(
                     text = "${Formatters.formatDate(payment.paymentDate)} • ${payment.paymentMethod}",

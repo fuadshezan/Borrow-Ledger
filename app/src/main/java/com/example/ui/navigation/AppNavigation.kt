@@ -24,8 +24,10 @@ import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CallReceived
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.ReceiptLong
@@ -81,6 +83,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.data.model.AppThemeMode
 import com.example.data.model.PaymentMethodOption
 import com.example.ui.screens.dashboard.DashboardScreen
 import com.example.ui.screens.loans.AddLoanScreen
@@ -93,18 +96,7 @@ import com.example.ui.screens.reminders.RemindersScreen
 import com.example.ui.screens.search.GlobalSearchScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.whoowes.WhoOwesMeScreen
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinancePurple
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.Indigo50
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Indigo700
-import com.example.ui.theme.Indigo800
-import com.example.ui.theme.Slate200
-import com.example.ui.theme.Slate500
-import com.example.ui.theme.Slate700
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -170,6 +162,9 @@ fun AppNavigation(viewModel: LendingViewModel) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (isTopLevelDestination) {
+                val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+                val isDark = AppTheme.colors.isDark
+
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -177,31 +172,47 @@ fun AppNavigation(viewModel: LendingViewModel) {
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Indigo50),
+                                    .background(AppTheme.colors.iconBoxBg),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("৳", fontWeight = FontWeight.ExtraBold, color = Indigo600, fontSize = 18.sp)
+                                Text(
+                                    text = currency,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = AppTheme.colors.iconBoxTint,
+                                    fontSize = 18.sp
+                                )
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = "Lending Tracker",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     },
                     actions = {
                         IconButton(
+                            onClick = { viewModel.toggleThemeMode() },
+                            modifier = Modifier.testTag("appbar_theme_toggle_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = if (isDark) "Switch to Light Mode" else "Switch to Dark Mode",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(
                             onClick = { navController.navigate(Screen.GlobalSearch.route) },
                             modifier = Modifier.testTag("appbar_search_button")
                         ) {
-                            Icon(Icons.Default.Search, contentDescription = "Search", tint = Slate700)
+                            Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         IconButton(
                             onClick = { navController.navigate(Screen.Settings.route) },
                             modifier = Modifier.testTag("appbar_settings_button")
                         ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Slate700)
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -214,7 +225,7 @@ fun AppNavigation(viewModel: LendingViewModel) {
             if (isTopLevelDestination) {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate200)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AppTheme.colors.cardBorder)
                 ) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -240,7 +251,7 @@ fun AppNavigation(viewModel: LendingViewModel) {
                                         BadgedBox(
                                             badge = {
                                                 Badge(
-                                                    containerColor = FinanceRedDark,
+                                                    containerColor = AppTheme.colors.redText,
                                                     contentColor = Color.White
                                                 ) { Text("$pendingRemindersCount") }
                                             }
@@ -602,7 +613,7 @@ private fun QuickAddBottomSheet(
                     )
                 },
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)

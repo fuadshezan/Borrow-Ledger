@@ -3,8 +3,10 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import com.example.data.local.AppDatabase
 import com.example.data.model.ActivityItem
+import com.example.data.model.AppThemeMode
 import com.example.data.model.DashboardSummary
 import com.example.data.model.LoanDirection
 import com.example.data.model.LoanStatus
@@ -12,6 +14,11 @@ import com.example.data.model.LoanWithDetails
 import com.example.data.model.PersonSummary
 import com.example.data.model.ReminderItem
 import com.example.data.repository.LendingRepository
+import com.example.data.sync.GoogleAuthManager
+import com.example.data.sync.GoogleUserState
+import com.example.data.sync.HybridSyncManager
+import com.example.data.sync.HybridSyncUiState
+import com.example.data.sync.NetworkMonitor
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -37,10 +44,30 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
     private val db = AppDatabase.getDatabase(application)
     val repository = LendingRepository(db)
 
+    val authManager = GoogleAuthManager(application)
+    val networkMonitor = NetworkMonitor(application)
+    val syncManager = HybridSyncManager(application, repository, db, authManager, networkMonitor)
+
+    val syncUiState: StateFlow<HybridSyncUiState> = syncManager.syncUiState
+    val googleUserState: StateFlow<GoogleUserState> = authManager.userState
+
+    private val prefs = application.getSharedPreferences("app_settings_prefs", Context.MODE_PRIVATE)
+
     private val _snackbarEvent = MutableSharedFlow<String>()
     val snackbarEvent: SharedFlow<String> = _snackbarEvent.asSharedFlow()
 
-    private val _currencySymbol = MutableStateFlow("৳")
+    private val _themeMode = MutableStateFlow(
+        try {
+            AppThemeMode.valueOf(prefs.getString("theme_mode", AppThemeMode.SYSTEM.name) ?: AppThemeMode.SYSTEM.name)
+        } catch (e: Exception) {
+            AppThemeMode.SYSTEM
+        }
+    )
+    val themeMode: StateFlow<AppThemeMode> = _themeMode.asStateFlow()
+
+    private val _currencySymbol = MutableStateFlow(
+        prefs.getString("currency_symbol", "৳") ?: "৳"
+    )
     val currencySymbol: StateFlow<String> = _currencySymbol.asStateFlow()
 
     // Filters
@@ -190,8 +217,23 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
         _searchQuery.value = query
     }
 
+    fun setThemeMode(mode: AppThemeMode) {
+        _themeMode.value = mode
+        prefs.edit().putString("theme_mode", mode.name).apply()
+    }
+
+    fun toggleThemeMode() {
+        val next = when (_themeMode.value) {
+            AppThemeMode.LIGHT -> AppThemeMode.DARK
+            AppThemeMode.DARK -> AppThemeMode.LIGHT
+            AppThemeMode.SYSTEM -> AppThemeMode.DARK
+        }
+        setThemeMode(next)
+    }
+
     fun setCurrencySymbol(symbol: String) {
         _currencySymbol.value = symbol
+        prefs.edit().putString("currency_symbol", symbol).apply()
     }
 
     // Actions
@@ -199,6 +241,7 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val id = repository.addPerson(name, phone, email, notes)
             _snackbarEvent.emit("Person '$name' added successfully")
+            syncManager.onLocalDataMutated()
             onComplete(id)
         }
     }
@@ -207,6 +250,7 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.deletePerson(personId)
             _snackbarEvent.emit("Deleted $personName and all related loans")
+            syncManager.onLocalDataMutated()
         }
     }
 
@@ -240,6 +284,7 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
             )
             val action = if (direction == LoanDirection.LENT) "Lent" else "Borrowed"
             _snackbarEvent.emit("Recorded: $action ${currencySymbol.value}${amount.toInt()}")
+            syncManager.onLocalDataMutated()
             onComplete(id)
         }
     }
@@ -248,6 +293,7 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.deleteLoan(loanId)
             _snackbarEvent.emit("Deleted loan: $loanName")
+            syncManager.onLocalDataMutated()
         }
     }
 
@@ -273,6 +319,7 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
             result.fold(
                 onSuccess = {
                     _snackbarEvent.emit("Payment of ${currencySymbol.value}${amount.toInt()} recorded ✓")
+                    syncManager.onLocalDataMutated()
                     onSuccess()
                 },
                 onFailure = { error ->
@@ -288,6 +335,7 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.deletePayment(paymentId)
             _snackbarEvent.emit("Payment of ${currencySymbol.value}${amount.toInt()} deleted. Balance restored.")
+            syncManager.onLocalDataMutated()
         }
     }
 
@@ -315,6 +363,7 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
                 onSuccess = {
                     val relationship = if (isGaveMoney) "$personName owes you" else "You owe $personName"
                     _snackbarEvent.emit("✓ Recorded! $relationship ${currencySymbol.value}${amount.toInt()}")
+                    syncManager.onLocalDataMutated()
                     onComplete()
                 },
                 onFailure = {
@@ -334,6 +383,50 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.resetWithDemoData()
             _snackbarEvent.emit("Reset sample records successfully")
+            syncManager.onLocalDataMutated()
+        }
+    }
+
+    // Google Account & Sheets Sync Controls
+    fun setGoogleUser(email: String, name: String, photoUrl: String = "", accessToken: String = "") {
+        authManager.saveUser(email, name, photoUrl, accessToken)
+        viewModelScope.launch {
+            _snackbarEvent.emit("Signed in as $email")
+            syncManager.syncNow(isManual = true)
+        }
+    }
+
+    fun signOutGoogle() {
+        viewModelScope.launch {
+            authManager.signOut()
+            _snackbarEvent.emit("Signed out of Google account")
+        }
+    }
+
+    fun syncNow() {
+        syncManager.syncNow(isManual = true) { success, msg ->
+            viewModelScope.launch {
+                _snackbarEvent.emit(msg)
+            }
+        }
+    }
+
+    fun restoreFromGoogleSheet() {
+        syncManager.restoreFromGoogleSheet { success, msg ->
+            viewModelScope.launch {
+                _snackbarEvent.emit(msg)
+            }
+        }
+    }
+
+    fun setAutoSyncEnabled(enabled: Boolean) {
+        syncManager.setAutoSyncEnabled(enabled)
+    }
+
+    fun saveCustomSpreadsheetId(id: String) {
+        authManager.saveSpreadsheetId(id)
+        viewModelScope.launch {
+            _snackbarEvent.emit("Linked Google Spreadsheet ID: $id")
         }
     }
 }

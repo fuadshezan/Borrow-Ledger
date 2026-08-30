@@ -2,6 +2,7 @@ package com.example.ui.screens.payments
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,17 +65,7 @@ import com.example.data.model.LoanDirection
 import com.example.data.model.LoanWithDetails
 import com.example.data.model.PaymentMethodOption
 import com.example.ui.components.DirectionBadge
-import com.example.ui.theme.FinanceAmberDark
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinanceGreenBorder
-import com.example.ui.theme.FinanceRed
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.FinanceRedBorder
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate200
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 import java.util.Calendar
 
@@ -226,8 +217,8 @@ fun AddPaymentScreen(
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = FinanceGreenLight),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, FinanceGreenBorder),
+                        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.greenContainer),
+                        border = BorderStroke(1.dp, AppTheme.colors.greenBorder),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -235,7 +226,7 @@ fun AddPaymentScreen(
                             Text(
                                 text = if (selectedLoan.direction == LoanDirection.LENT) "Remaining balance owed to you" else "Remaining balance you owe",
                                 fontSize = 12.sp,
-                                color = FinanceGreenDark,
+                                color = AppTheme.colors.greenText,
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.height(4.dp))
@@ -243,13 +234,13 @@ fun AddPaymentScreen(
                                 text = Formatters.formatMoney(currentOutstanding, currency),
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = FinanceGreenDark
+                                color = AppTheme.colors.greenText
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "Original Loan: ${Formatters.formatMoney(selectedLoan.originalAmount, currency)} • Already Paid: ${Formatters.formatMoney(selectedLoan.totalPaid, currency)}",
                                 fontSize = 12.sp,
-                                color = FinanceGreenDark.copy(alpha = 0.8f)
+                                color = AppTheme.colors.greenText.copy(alpha = 0.8f)
                             )
                         }
                     }
@@ -317,21 +308,21 @@ fun AddPaymentScreen(
                 if (isOverpaid) {
                     item {
                         Surface(
-                            color = FinanceRedLight,
+                            color = AppTheme.colors.redContainer,
                             shape = RoundedCornerShape(12.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, FinanceRedBorder),
+                            border = BorderStroke(1.dp, AppTheme.colors.redBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Warning, contentDescription = null, tint = FinanceRedDark)
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = AppTheme.colors.redText)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Overpayment is not allowed. The maximum amount you can record is ${Formatters.formatMoney(currentOutstanding, currency)}.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = FinanceRedDark,
+                                    color = AppTheme.colors.redText,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -423,7 +414,7 @@ fun AddPaymentScreen(
                         },
                         enabled = parsedAmount > 0 && !isOverpaid && selectedLoanId != null,
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)

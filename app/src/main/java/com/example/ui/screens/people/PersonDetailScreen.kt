@@ -2,6 +2,7 @@ package com.example.ui.screens.people
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -70,20 +71,7 @@ import com.example.ui.components.DirectionBadge
 import com.example.ui.components.LoanProgressBar
 import com.example.ui.components.PaymentMethodBadge
 import com.example.ui.components.StatusBadge
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinancePurple
-import com.example.ui.theme.FinancePurpleLight
-import com.example.ui.theme.FinanceRed
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.Indigo50
-import com.example.ui.theme.Indigo100
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate200
-import com.example.ui.theme.Slate500
-import com.example.ui.theme.Slate700
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,7 +125,7 @@ fun PersonDetailScreen(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Person",
-                            tint = FinanceRed
+                            tint = AppTheme.colors.redText
                         )
                     }
                 },
@@ -161,7 +149,7 @@ fun PersonDetailScreen(
                 Card(
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                    border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -171,14 +159,14 @@ fun PersonDetailScreen(
                                 modifier = Modifier
                                     .size(54.dp)
                                     .clip(CircleShape)
-                                    .background(Indigo50),
+                                    .background(AppTheme.colors.iconBoxBg),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = person.name.take(1).uppercase(),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 22.sp,
-                                    color = Indigo600
+                                    color = AppTheme.colors.iconBoxTint
                                 )
                             }
                             Spacer(modifier = Modifier.width(16.dp))
@@ -186,7 +174,8 @@ fun PersonDetailScreen(
                                 Text(
                                     text = person.name,
                                     style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 if (person.notes.isNotBlank()) {
                                     Text(
@@ -199,7 +188,7 @@ fun PersonDetailScreen(
                                     Text(
                                         text = person.phone,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Indigo600,
+                                        color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
@@ -267,7 +256,7 @@ fun PersonDetailScreen(
                 Card(
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                    border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -276,7 +265,7 @@ fun PersonDetailScreen(
                             text = "Financial Summary",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Slate700
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth()) {
@@ -285,7 +274,8 @@ fun PersonDetailScreen(
                                 Text(
                                     text = Formatters.formatMoney(person.totalLent, currency),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Column(modifier = Modifier.weight(1f)) {
@@ -294,7 +284,7 @@ fun PersonDetailScreen(
                                     text = Formatters.formatMoney(person.totalLentReturned, currency),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
-                                    color = FinanceGreenDark
+                                    color = AppTheme.colors.greenText
                                 )
                             }
                             Column(modifier = Modifier.weight(1f)) {
@@ -303,7 +293,7 @@ fun PersonDetailScreen(
                                     text = Formatters.formatMoney(person.totalLentOutstanding, currency),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
-                                    color = if (person.totalLentOutstanding > 0) FinanceRedDark else FinanceGreenDark
+                                    color = if (person.totalLentOutstanding > 0) AppTheme.colors.redText else AppTheme.colors.greenText
                                 )
                             }
                         }
@@ -316,7 +306,7 @@ fun PersonDetailScreen(
                 Button(
                     onClick = { onNavigateToAddLoanForPerson(person.id) },
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("person_detail_add_loan_button")
@@ -358,6 +348,7 @@ fun PersonDetailScreen(
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
@@ -388,6 +379,7 @@ fun PersonDetailScreen(
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
@@ -497,7 +489,7 @@ private fun PersonLoanItemCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -516,7 +508,8 @@ private fun PersonLoanItemCard(
                     Text(
                         text = if (loan.purpose.isNotBlank()) loan.purpose else "Loan #${loan.id}",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 StatusBadge(status = loan.status)
@@ -530,7 +523,8 @@ private fun PersonLoanItemCard(
                     Text(
                         text = Formatters.formatMoney(loan.originalAmount, currencySymbol),
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
@@ -539,7 +533,7 @@ private fun PersonLoanItemCard(
                         text = Formatters.formatMoney(loan.totalPaid, currencySymbol),
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
-                        color = FinanceGreenDark
+                        color = AppTheme.colors.greenText
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
@@ -548,7 +542,7 @@ private fun PersonLoanItemCard(
                         text = Formatters.formatMoney(loan.outstanding, currencySymbol),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = if (loan.isSettled) FinanceGreenDark else MaterialTheme.colorScheme.primary
+                        color = if (loan.isSettled) AppTheme.colors.greenText else MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -592,6 +586,7 @@ private fun PersonTimelineRow(
     Card(
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -602,19 +597,24 @@ private fun PersonTimelineRow(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(if (event.isPayment) FinanceGreenLight else FinancePurpleLight),
+                    .background(if (event.isPayment) AppTheme.colors.greenContainer else AppTheme.colors.purpleContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (event.isPayment) Icons.Default.Payment else Icons.Default.Add,
                     contentDescription = null,
-                    tint = if (event.isPayment) FinanceGreenDark else FinancePurple,
+                    tint = if (event.isPayment) AppTheme.colors.greenText else AppTheme.colors.purpleText,
                     modifier = Modifier.size(16.dp)
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = event.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text(
+                    text = event.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Text(
                     text = "${Formatters.formatDate(event.date)} • ${event.method}",
                     fontSize = 11.sp,
@@ -632,7 +632,7 @@ private fun PersonTimelineRow(
                 text = (if (event.isPayment) "-" else "+") + Formatters.formatMoney(event.amount, currencySymbol),
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = if (event.isPayment) FinanceGreenDark else MaterialTheme.colorScheme.onSurface
+                color = if (event.isPayment) AppTheme.colors.greenText else MaterialTheme.colorScheme.onSurface
             )
         }
     }

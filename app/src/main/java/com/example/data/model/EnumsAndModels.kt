@@ -40,6 +40,12 @@ enum class LoanPurposeCategory(val title: String) {
     OTHER("Other")
 }
 
+enum class AppThemeMode(val title: String, val subtitle: String) {
+    SYSTEM("System Default", "Follows device appearance"),
+    LIGHT("Light Mode", "Crisp high-contrast daylight theme"),
+    DARK("Dark Mode", "Modern deep obsidian night theme")
+}
+
 data class LoanWithDetails(
     val id: Long,
     val personId: Long,

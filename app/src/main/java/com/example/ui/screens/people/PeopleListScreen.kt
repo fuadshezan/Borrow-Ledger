@@ -1,5 +1,6 @@
 package com.example.ui.screens.people
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,19 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Formatters
 import com.example.data.model.PersonSummary
 import com.example.ui.components.EmptyState
-import com.example.ui.theme.FinanceAmberDark
-import com.example.ui.theme.FinanceAmberLight
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinancePurple
-import com.example.ui.theme.FinancePurpleLight
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.Indigo50
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate200
-import com.example.ui.theme.Slate500
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 
 enum class PeopleFilter(val label: String) {
@@ -112,8 +101,8 @@ fun PeopleListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddPersonDialog = true },
-                containerColor = Indigo600,
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.testTag("people_list_fab_add")
             ) {
@@ -216,7 +205,7 @@ fun PersonCardItem(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -291,12 +280,12 @@ fun PersonCardItem(
                         text = Formatters.formatMoney(person.totalLentOutstanding, currencySymbol),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = FinanceGreenDark
+                        color = AppTheme.colors.greenText
                     )
                     Text(
                         text = "Owes you",
                         fontSize = 11.sp,
-                        color = FinanceGreenDark,
+                        color = AppTheme.colors.greenText,
                         fontWeight = FontWeight.Medium
                     )
                 } else if (person.totalBorrowedOutstanding > 0.001) {
@@ -304,22 +293,23 @@ fun PersonCardItem(
                         text = Formatters.formatMoney(person.totalBorrowedOutstanding, currencySymbol),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = FinancePurple
+                        color = AppTheme.colors.purpleText
                     )
                     Text(
                         text = "You owe",
                         fontSize = 11.sp,
-                        color = FinancePurple,
+                        color = AppTheme.colors.purpleText,
                         fontWeight = FontWeight.Medium
                     )
                 } else {
                     Surface(
-                        color = FinanceGreenLight,
-                        shape = RoundedCornerShape(6.dp)
+                        color = AppTheme.colors.greenContainer,
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, AppTheme.colors.greenBorder)
                     ) {
                         Text(
                             text = "Settled ✓",
-                            color = FinanceGreenDark,
+                            color = AppTheme.colors.greenText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -329,13 +319,14 @@ fun PersonCardItem(
 
                 if (person.hasOverdue) {
                     Surface(
-                        color = FinanceRedLight,
+                        color = AppTheme.colors.redContainer,
                         shape = RoundedCornerShape(4.dp),
+                        border = BorderStroke(1.dp, AppTheme.colors.redBorder),
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
                         Text(
                             text = "Overdue",
-                            color = FinanceRedDark,
+                            color = AppTheme.colors.redText,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)

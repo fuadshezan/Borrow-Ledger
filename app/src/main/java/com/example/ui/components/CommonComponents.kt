@@ -3,6 +3,7 @@ package com.example.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,42 +53,26 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.Formatters
 import com.example.data.model.LoanDirection
 import com.example.data.model.LoanStatus
-import com.example.ui.theme.FinanceAmber
-import com.example.ui.theme.FinanceAmberDark
-import com.example.ui.theme.FinanceAmberLight
-import com.example.ui.theme.FinanceBlue
-import com.example.ui.theme.FinanceBlueLight
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinancePurple
-import com.example.ui.theme.FinancePurpleLight
+import com.example.ui.theme.AppTheme
 import com.example.ui.theme.FinanceRed
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.Slate200
-import com.example.ui.theme.Slate400
-import com.example.ui.theme.Slate500
-import com.example.ui.theme.Slate700
-import com.example.ui.theme.Slate800
-import com.example.ui.theme.Slate900
 
 @Composable
 fun StatusBadge(
     status: LoanStatus,
     modifier: Modifier = Modifier
 ) {
-    val (bgColor, textColor, icon) = when (status) {
-        LoanStatus.ACTIVE -> Triple(FinanceBlueLight, FinanceBlue, Icons.Default.Info)
-        LoanStatus.DUE_SOON -> Triple(FinanceAmberLight, FinanceAmberDark, Icons.Default.Warning)
-        LoanStatus.OVERDUE -> Triple(FinanceRedLight, FinanceRedDark, Icons.Default.Warning)
-        LoanStatus.SETTLED -> Triple(FinanceGreenLight, FinanceGreenDark, Icons.Default.CheckCircle)
-        LoanStatus.NO_DUE_DATE -> Triple(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, null)
+    val (bgColor, borderColor, textColor, icon) = when (status) {
+        LoanStatus.ACTIVE -> Quad(AppTheme.colors.blueContainer, AppTheme.colors.blueBorder, AppTheme.colors.blueText, Icons.Default.Info)
+        LoanStatus.DUE_SOON -> Quad(AppTheme.colors.amberContainer, AppTheme.colors.amberBorder, AppTheme.colors.amberText, Icons.Default.Warning)
+        LoanStatus.OVERDUE -> Quad(AppTheme.colors.redContainer, AppTheme.colors.redBorder, AppTheme.colors.redText, Icons.Default.Warning)
+        LoanStatus.SETTLED -> Quad(AppTheme.colors.greenContainer, AppTheme.colors.greenBorder, AppTheme.colors.greenText, Icons.Default.CheckCircle)
+        LoanStatus.NO_DUE_DATE -> Quad(MaterialTheme.colorScheme.surfaceVariant, AppTheme.colors.cardBorder, MaterialTheme.colorScheme.onSurfaceVariant, null)
     }
 
     Surface(
         color = bgColor,
         shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, borderColor.copy(alpha = 0.6f)),
         modifier = modifier
     ) {
         Row(
@@ -118,15 +103,16 @@ fun DirectionBadge(
     direction: LoanDirection,
     modifier: Modifier = Modifier
 ) {
-    val (bgColor, textColor, icon, label) = if (direction == LoanDirection.LENT) {
-        Quad(FinanceGreenLight, FinanceGreenDark, Icons.Default.ArrowUpward, "Lent")
+    val (bgColor, borderColor, textColor, icon, label) = if (direction == LoanDirection.LENT) {
+        Quint(AppTheme.colors.greenContainer, AppTheme.colors.greenBorder, AppTheme.colors.greenText, Icons.Default.ArrowUpward, "Lent")
     } else {
-        Quad(FinancePurpleLight, FinancePurple, Icons.Default.ArrowDownward, "Borrowed")
+        Quint(AppTheme.colors.purpleContainer, AppTheme.colors.purpleBorder, AppTheme.colors.purpleText, Icons.Default.ArrowDownward, "Borrowed")
     }
 
     Surface(
         color = bgColor,
         shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, borderColor.copy(alpha = 0.5f)),
         modifier = modifier
     ) {
         Row(
@@ -139,18 +125,19 @@ fun DirectionBadge(
                 tint = textColor,
                 modifier = Modifier.size(12.dp)
             )
-            Spacer(modifier = Modifier.width(2.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = label,
                 color = textColor,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
 
 private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+private data class Quint<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
 
 @Composable
 fun SummaryCard(
@@ -161,7 +148,7 @@ fun SummaryCard(
     icon: ImageVector? = null,
     cardColor: Color = MaterialTheme.colorScheme.surface,
     accentColor: Color = MaterialTheme.colorScheme.primary,
-    borderColor: Color = Slate200,
+    borderColor: Color = AppTheme.colors.cardBorder,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -169,7 +156,7 @@ fun SummaryCard(
         colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
+        border = BorderStroke(1.dp, borderColor),
         modifier = modifier
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
     ) {
@@ -192,7 +179,7 @@ fun SummaryCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(accentColor.copy(alpha = 0.12f)),
+                            .background(accentColor.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -250,7 +237,7 @@ fun LoanProgressBar(
                 text = "$percentage% Repaid",
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
-                color = if (percentage == 100) FinanceGreenDark else MaterialTheme.colorScheme.primary,
+                color = if (percentage == 100) AppTheme.colors.greenText else MaterialTheme.colorScheme.primary,
                 fontSize = 11.sp
             )
         }
@@ -261,7 +248,7 @@ fun LoanProgressBar(
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp)),
-            color = if (percentage == 100) FinanceGreen else MaterialTheme.colorScheme.primary,
+            color = if (percentage == 100) AppTheme.colors.greenText else MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
     }
@@ -275,6 +262,7 @@ fun PaymentMethodBadge(
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder.copy(alpha = 0.5f)),
         modifier = modifier
     ) {
         Text(
@@ -282,7 +270,8 @@ fun PaymentMethodBadge(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            fontSize = 10.sp
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }
@@ -307,7 +296,7 @@ fun EmptyState(
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -364,14 +353,15 @@ fun ConfirmDeleteDialog(
                 if (impactNote != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
-                        color = FinanceAmberLight,
+                        color = AppTheme.colors.amberContainer,
                         shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, AppTheme.colors.amberBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = impactNote,
                             style = MaterialTheme.typography.bodySmall,
-                            color = FinanceAmberDark,
+                            color = AppTheme.colors.amberText,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(8.dp)
                         )

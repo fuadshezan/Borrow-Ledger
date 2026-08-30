@@ -2,6 +2,7 @@ package com.example.ui.screens.loans
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -71,10 +73,7 @@ import com.example.data.model.LoanDirection
 import com.example.data.model.LoanPurposeCategory
 import com.example.data.model.PaymentMethodOption
 import com.example.ui.screens.people.AddPersonDialog
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinancePurple
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate200
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 import java.util.Calendar
 
@@ -451,7 +450,7 @@ fun AddLoanScreen(
                 Card(
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                    border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -546,7 +545,7 @@ fun AddLoanScreen(
                         )
                     },
                     shape = RoundedCornerShape(14.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Indigo600),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)

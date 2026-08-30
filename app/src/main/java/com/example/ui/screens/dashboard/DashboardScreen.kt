@@ -1,6 +1,7 @@
 package com.example.ui.screens.dashboard
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,15 +24,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.CallReceived
 import androidx.compose.material.icons.filled.CallMade
+import androidx.compose.material.icons.filled.CallReceived
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Payment
-import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
@@ -39,12 +38,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,35 +58,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.ActivityItem
 import com.example.data.model.Formatters
-import com.example.data.model.LoanDirection
 import com.example.data.model.PersonSummary
-import com.example.ui.components.DirectionBadge
+import com.example.data.sync.SyncStatus
 import com.example.ui.components.EmptyState
-import com.example.ui.components.PaymentMethodBadge
-import com.example.ui.components.StatusBadge
 import com.example.ui.components.SummaryCard
-import com.example.ui.theme.FinanceAmber
-import com.example.ui.theme.FinanceAmberBorder
-import com.example.ui.theme.FinanceAmberDark
-import com.example.ui.theme.FinanceAmberLight
-import com.example.ui.theme.FinanceBlue
-import com.example.ui.theme.FinanceBlueLight
-import com.example.ui.theme.FinanceGreen
-import com.example.ui.theme.FinanceGreenBorder
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinancePurple
-import com.example.ui.theme.FinancePurpleDark
-import com.example.ui.theme.FinancePurpleLight
-import com.example.ui.theme.FinanceRed
-import com.example.ui.theme.FinanceRedBorder
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.Indigo200
-import com.example.ui.theme.Indigo600
-import com.example.ui.theme.Slate100
-import com.example.ui.theme.Slate200
-import com.example.ui.theme.Slate500
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 
 @Composable
@@ -112,6 +84,8 @@ fun DashboardScreen(
     val recentActivities by viewModel.recentActivity.collectAsStateWithLifecycle()
     val reminders by viewModel.reminderItems.collectAsStateWithLifecycle()
     val currency by viewModel.currencySymbol.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncUiState.collectAsStateWithLifecycle()
+    val googleUser by viewModel.googleUserState.collectAsStateWithLifecycle()
 
     val pendingReminders = reminders.filter { !it.isCompleted }
 
@@ -124,7 +98,7 @@ fun DashboardScreen(
     ) {
         // 1. Header Greeting & Date
         item {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -148,7 +122,7 @@ fun DashboardScreen(
                     Button(
                         onClick = onOpenQuickAdd,
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         modifier = Modifier.testTag("dashboard_quick_add_header_button")
                     ) {
                         Icon(
@@ -158,6 +132,57 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Quick Add", fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                // Cloud & Offline Sync Pill
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = when {
+                        !syncState.isOnline -> Color(0xFFF59E0B).copy(alpha = 0.12f)
+                        syncState.status == SyncStatus.SYNCING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        googleUser.isSignedIn -> Color(0xFF10B981).copy(alpha = 0.12f)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    border = BorderStroke(
+                        1.dp,
+                        when {
+                            !syncState.isOnline -> Color(0xFFF59E0B).copy(alpha = 0.4f)
+                            syncState.status == SyncStatus.SYNCING -> MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                            googleUser.isSignedIn -> Color(0xFF10B981).copy(alpha = 0.4f)
+                            else -> AppTheme.colors.cardBorder
+                        }
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when {
+                                        !syncState.isOnline -> Color(0xFFF59E0B)
+                                        syncState.status == SyncStatus.SYNCING -> MaterialTheme.colorScheme.primary
+                                        googleUser.isSignedIn -> Color(0xFF10B981)
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = when {
+                                !syncState.isOnline -> if (syncState.pendingChangesCount > 0) "Offline: ${syncState.pendingChangesCount} changes saved locally" else "Offline Mode: Local SQLite Active"
+                                syncState.status == SyncStatus.SYNCING -> "Syncing with Google Sheets..."
+                                googleUser.isSignedIn -> "Google Sheet Database Connected ✓"
+                                else -> "Local SQLite Database (Offline-First)"
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
@@ -176,9 +201,9 @@ fun DashboardScreen(
                         currencySymbol = currency,
                         subtitle = "${summary.activeDebtorsCount} people owe you",
                         icon = Icons.Default.CallReceived,
-                        cardColor = FinanceGreenLight,
-                        accentColor = FinanceGreenDark,
-                        borderColor = FinanceGreenBorder,
+                        cardColor = AppTheme.colors.greenContainer,
+                        accentColor = AppTheme.colors.greenText,
+                        borderColor = AppTheme.colors.greenBorder,
                         onClick = onNavigateToWhoOwesMe,
                         modifier = Modifier
                             .weight(1f)
@@ -190,9 +215,9 @@ fun DashboardScreen(
                         currencySymbol = currency,
                         subtitle = "Outstanding borrowed",
                         icon = Icons.Default.CallMade,
-                        cardColor = FinancePurpleLight,
-                        accentColor = FinancePurpleDark,
-                        borderColor = Indigo200,
+                        cardColor = AppTheme.colors.purpleContainer,
+                        accentColor = AppTheme.colors.purpleText,
+                        borderColor = AppTheme.colors.purpleBorder,
                         onClick = onNavigateToLoans,
                         modifier = Modifier
                             .weight(1f)
@@ -210,9 +235,9 @@ fun DashboardScreen(
                         currencySymbol = currency,
                         subtitle = "Needs urgent follow-up",
                         icon = Icons.Default.ErrorOutline,
-                        cardColor = FinanceRedLight,
-                        accentColor = FinanceRedDark,
-                        borderColor = FinanceRedBorder,
+                        cardColor = AppTheme.colors.redContainer,
+                        accentColor = AppTheme.colors.redText,
+                        borderColor = AppTheme.colors.redBorder,
                         onClick = onNavigateToReminders,
                         modifier = Modifier
                             .weight(1f)
@@ -224,9 +249,9 @@ fun DashboardScreen(
                         currencySymbol = currency,
                         subtitle = "Within next 7 days",
                         icon = Icons.Default.HourglassEmpty,
-                        cardColor = FinanceAmberLight,
-                        accentColor = FinanceAmberDark,
-                        borderColor = FinanceAmberBorder,
+                        cardColor = AppTheme.colors.amberContainer,
+                        accentColor = AppTheme.colors.amberText,
+                        borderColor = AppTheme.colors.amberBorder,
                         onClick = onNavigateToReminders,
                         modifier = Modifier
                             .weight(1f)
@@ -288,12 +313,12 @@ fun DashboardScreen(
 
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isOverdue) FinanceRedLight else FinanceAmberLight
+                        containerColor = if (isOverdue) AppTheme.colors.redContainer else AppTheme.colors.amberContainer
                     ),
                     shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(
+                    border = BorderStroke(
                         1.dp,
-                        if (isOverdue) FinanceRedBorder else FinanceAmberBorder
+                        if (isOverdue) AppTheme.colors.redBorder else AppTheme.colors.amberBorder
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -308,13 +333,16 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(if (isOverdue) FinanceRed.copy(alpha = 0.15f) else FinanceAmber.copy(alpha = 0.15f)),
+                                .background(
+                                    if (isOverdue) AppTheme.colors.redText.copy(alpha = 0.15f)
+                                    else AppTheme.colors.amberText.copy(alpha = 0.15f)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = if (isOverdue) Icons.Default.Warning else Icons.Default.NotificationsActive,
                                 contentDescription = null,
-                                tint = if (isOverdue) FinanceRedDark else FinanceAmberDark,
+                                tint = if (isOverdue) AppTheme.colors.redText else AppTheme.colors.amberText,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -323,7 +351,7 @@ fun DashboardScreen(
                             Text(
                                 text = if (isOverdue) "Overdue Alert" else "Upcoming Repayment Due",
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOverdue) FinanceRedDark else FinanceAmberDark,
+                                color = if (isOverdue) AppTheme.colors.redText else AppTheme.colors.amberText,
                                 fontSize = 13.sp
                             )
                             Text(
@@ -337,7 +365,7 @@ fun DashboardScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowForward,
                             contentDescription = "View Reminders",
-                            tint = if (isOverdue) FinanceRedDark else FinanceAmberDark,
+                            tint = if (isOverdue) AppTheme.colors.redText else AppTheme.colors.amberText,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -370,7 +398,7 @@ fun DashboardScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                    border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(
@@ -448,7 +476,7 @@ fun DashboardScreen(
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -480,7 +508,7 @@ fun DashboardScreen(
                                 text = Formatters.formatMoney(summary.thisMonthLent, currency),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = FinanceGreenDark
+                                color = AppTheme.colors.greenText
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -498,6 +526,7 @@ fun DashboardScreen(
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, AppTheme.colors.cardBorder.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -512,7 +541,7 @@ fun DashboardScreen(
                             Text(
                                 text = "Settled: ${summary.settledLoansCount} loans",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = FinanceGreenDark,
+                                color = AppTheme.colors.greenText,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -536,7 +565,7 @@ private fun WhoOwesMeMiniCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .width(180.dp)
@@ -565,13 +594,13 @@ private fun WhoOwesMeMiniCard(
 
                 if (person.hasOverdue) {
                     Surface(
-                        color = FinanceRedLight,
+                        color = AppTheme.colors.redContainer,
                         shape = RoundedCornerShape(6.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, FinanceRedBorder)
+                        border = BorderStroke(1.dp, AppTheme.colors.redBorder)
                     ) {
                         Text(
                             text = "Overdue",
-                            color = FinanceRedDark,
+                            color = AppTheme.colors.redText,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -579,13 +608,13 @@ private fun WhoOwesMeMiniCard(
                     }
                 } else if (person.hasDueSoon) {
                     Surface(
-                        color = FinanceAmberLight,
+                        color = AppTheme.colors.amberContainer,
                         shape = RoundedCornerShape(6.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, FinanceAmberBorder)
+                        border = BorderStroke(1.dp, AppTheme.colors.amberBorder)
                     ) {
                         Text(
                             text = "Due Soon",
-                            color = FinanceAmberDark,
+                            color = AppTheme.colors.amberText,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -599,6 +628,7 @@ private fun WhoOwesMeMiniCard(
                 text = person.name,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -607,7 +637,7 @@ private fun WhoOwesMeMiniCard(
                 text = Formatters.formatMoney(person.totalLentOutstanding, currencySymbol),
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                color = FinanceGreenDark
+                color = AppTheme.colors.greenText
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -629,7 +659,7 @@ private fun ActivityRowItem(
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -641,9 +671,9 @@ private fun ActivityRowItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val (icon, bg, tint) = if (activity.isPayment) {
-                Triple(Icons.Default.CheckCircle, FinanceGreenLight, FinanceGreenDark)
+                Triple(Icons.Default.CheckCircle, AppTheme.colors.greenContainer, AppTheme.colors.greenText)
             } else {
-                Triple(Icons.Default.CallMade, FinancePurpleLight, FinancePurpleDark)
+                Triple(Icons.Default.CallMade, AppTheme.colors.purpleContainer, AppTheme.colors.purpleText)
             }
 
             Box(
@@ -694,16 +724,17 @@ private fun ActivityRowItem(
                     text = (if (activity.isPayment) "+" else "") + Formatters.formatMoney(activity.amount, currencySymbol),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = if (activity.isPayment) FinanceGreenDark else MaterialTheme.colorScheme.onSurface
+                    color = if (activity.isPayment) AppTheme.colors.greenText else MaterialTheme.colorScheme.onSurface
                 )
                 Surface(
-                    color = if (activity.isPayment) FinanceGreenLight else FinancePurpleLight,
+                    color = if (activity.isPayment) AppTheme.colors.greenContainer else AppTheme.colors.purpleContainer,
                     shape = RoundedCornerShape(4.dp),
+                    border = BorderStroke(1.dp, if (activity.isPayment) AppTheme.colors.greenBorder.copy(alpha = 0.5f) else AppTheme.colors.purpleBorder.copy(alpha = 0.5f)),
                     modifier = Modifier.padding(top = 2.dp)
                 ) {
                     Text(
                         text = if (activity.isPayment) "Payment" else "Loan",
-                        color = if (activity.isPayment) FinanceGreenDark else FinancePurpleDark,
+                        color = if (activity.isPayment) AppTheme.colors.greenText else AppTheme.colors.purpleText,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)

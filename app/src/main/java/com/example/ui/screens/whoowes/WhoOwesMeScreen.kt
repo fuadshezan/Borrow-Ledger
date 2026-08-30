@@ -2,6 +2,7 @@ package com.example.ui.screens.whoowes
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,16 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Formatters
 import com.example.data.model.PersonSummary
 import com.example.ui.components.EmptyState
-import com.example.ui.theme.FinanceAmberDark
-import com.example.ui.theme.FinanceAmberLight
-import com.example.ui.theme.FinanceGreenDark
-import com.example.ui.theme.FinanceGreenLight
-import com.example.ui.theme.FinanceGreenBorder
-import com.example.ui.theme.FinanceRedDark
-import com.example.ui.theme.FinanceRedLight
-import com.example.ui.theme.FinanceRedBorder
-import com.example.ui.theme.FinanceAmberBorder
-import com.example.ui.theme.Slate200
+import com.example.ui.theme.AppTheme
 import com.example.ui.viewmodel.LendingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,15 +105,15 @@ fun WhoOwesMeScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = FinanceGreenLight),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, FinanceGreenBorder),
+                    colors = CardDefaults.cardColors(containerColor = AppTheme.colors.greenContainer),
+                    border = BorderStroke(1.dp, AppTheme.colors.greenBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = "Total Money Owed to You",
                             fontSize = 13.sp,
-                            color = FinanceGreenDark,
+                            color = AppTheme.colors.greenText,
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -129,13 +121,13 @@ fun WhoOwesMeScreen(
                             text = Formatters.formatMoney(totalOwed, currency),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = FinanceGreenDark
+                            color = AppTheme.colors.greenText
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Across ${whoOwesMeList.size} borrowers",
                             fontSize = 12.sp,
-                            color = FinanceGreenDark.copy(alpha = 0.8f)
+                            color = AppTheme.colors.greenText.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -194,7 +186,7 @@ private fun DebtorCardItem(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+        border = BorderStroke(1.dp, AppTheme.colors.cardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -227,7 +219,8 @@ private fun DebtorCardItem(
                     Text(
                         text = person.name,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (person.phone.isNotBlank()) {
                         Text(
@@ -243,17 +236,18 @@ private fun DebtorCardItem(
                         text = Formatters.formatMoney(person.totalLentOutstanding, currencySymbol),
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
-                        color = if (person.hasOverdue) FinanceRedDark else FinanceGreenDark
+                        color = if (person.hasOverdue) AppTheme.colors.redText else AppTheme.colors.greenText
                     )
                     if (person.hasOverdue) {
                         Surface(
-                            color = FinanceRedLight,
+                            color = AppTheme.colors.redContainer,
                             shape = RoundedCornerShape(4.dp),
+                            border = BorderStroke(1.dp, AppTheme.colors.redBorder),
                             modifier = Modifier.padding(top = 2.dp)
                         ) {
                             Text(
                                 text = "Overdue",
-                                color = FinanceRedDark,
+                                color = AppTheme.colors.redText,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -261,13 +255,14 @@ private fun DebtorCardItem(
                         }
                     } else if (person.hasDueSoon) {
                         Surface(
-                            color = FinanceAmberLight,
+                            color = AppTheme.colors.amberContainer,
                             shape = RoundedCornerShape(4.dp),
+                            border = BorderStroke(1.dp, AppTheme.colors.amberBorder),
                             modifier = Modifier.padding(top = 2.dp)
                         ) {
                             Text(
                                 text = "Due Soon",
-                                color = FinanceAmberDark,
+                                color = AppTheme.colors.amberText,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
