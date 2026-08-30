@@ -69,6 +69,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -119,13 +121,19 @@ fun SettingsScreen(
 
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf(false) }
-    var showSignInDialog by remember { mutableStateOf(false) }
     var showCustomSheetDialog by remember { mutableStateOf(false) }
     var customSheetIdInput by remember { mutableStateOf("") }
+    var isSigningIn by remember { mutableStateOf(false) }
 
-    // Manual sign-in input states
-    var inputEmail by remember { mutableStateOf(if (googleUser.email.isNotBlank()) googleUser.email else "fuadshezan@gmail.com") }
-    var inputName by remember { mutableStateOf(if (googleUser.displayName.isNotBlank()) googleUser.displayName else "Fuad Shezan") }
+    // Launcher for the Google Sign-In system account picker.
+    // Result is forwarded directly to the ViewModel which processes it
+    // against Firebase Auth and acquires an OAuth token for Sheets/Drive.
+    val signInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isSigningIn = false
+        viewModel.handleGoogleSignInResult(result.data)
+    }
 
     Scaffold(
         topBar = {
@@ -277,11 +285,29 @@ fun SettingsScreen(
                                     }
                                 } else {
                                     Button(
-                                        onClick = { showSignInDialog = true },
+                                        onClick = {
+                                            isSigningIn = true
+                                            signInLauncher.launch(
+                                                viewModel.authManager.buildSignInIntent()
+                                            )
+                                        },
                                         shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                        enabled = !isSigningIn
                                     ) {
-                                        Text("Login with Gmail", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        if (isSigningIn) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(14.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                        }
+                                        Text(
+                                            text = if (isSigningIn) "Signing in..." else "Login with Gmail",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                 }
                             }
@@ -732,56 +758,8 @@ fun SettingsScreen(
         }
     }
 
-    // Sign In / Connect Gmail Dialog
-    if (showSignInDialog) {
-        AlertDialog(
-            onDismissRequest = { showSignInDialog = false },
-            title = { Text("Sign in with Gmail", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Connect your Google account to automatically create and sync your 'Lending Tracker Database' spreadsheet.",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = inputEmail,
-                        onValueChange = { inputEmail = it },
-                        label = { Text("Gmail Address") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = inputName,
-                        onValueChange = { inputName = it },
-                        label = { Text("Your Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (inputEmail.isNotBlank()) {
-                            viewModel.setGoogleUser(
-                                email = inputEmail.trim(),
-                                name = inputName.trim()
-                            )
-                            showSignInDialog = false
-                        }
-                    }
-                ) {
-                    Text("Connect Account")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSignInDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    // (Sign-in is now handled via rememberLauncherForActivityResult above;
+    //  no manual dialog is needed.)
 
     // Currency selection dialog
     if (showCurrencyDialog) {

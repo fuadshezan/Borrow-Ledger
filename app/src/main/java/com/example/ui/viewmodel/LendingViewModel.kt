@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.Context
@@ -82,7 +83,11 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         viewModelScope.launch {
-            repository.seedDatabaseIfEmpty()
+            try {
+                repository.seedDatabaseIfEmpty()
+            } catch (e: Exception) {
+                // Ignore or log gracefully
+            }
         }
     }
 
@@ -388,11 +393,32 @@ class LendingViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Google Account & Sheets Sync Controls
-    fun setGoogleUser(email: String, name: String, photoUrl: String = "", accessToken: String = "") {
-        authManager.saveUser(email, name, photoUrl, accessToken)
+
+    /**
+     * Processes the Intent result from the Google Sign-In activity.
+     * Delegates to [GoogleAuthManager.handleSignInResult], which signs into Firebase
+     * and acquires an OAuth access token with Sheets/Drive scopes.
+     *
+     * On success the sync pipeline is immediately triggered so the Google Sheet
+     * is created/updated right away.
+     */
+    fun handleGoogleSignInResult(data: Intent?) {
+        if (data == null) return // User cancelled the picker
         viewModelScope.launch {
-            _snackbarEvent.emit("Signed in as $email")
-            syncManager.syncNow(isManual = true)
+            val result = authManager.handleSignInResult(data)
+            result.fold(
+                onSuccess = { userState ->
+                    _snackbarEvent.emit("✓ Signed in as ${userState.email}")
+                    syncManager.syncNow(isManual = true)
+                },
+                onFailure = { error ->
+                    val msg = error.message ?: "Sign-in failed"
+                    // Don't show an error snackbar for a user-initiated cancellation
+                    if (!msg.contains("cancelled", ignoreCase = true)) {
+                        _snackbarEvent.emit("Sign-in failed: $msg")
+                    }
+                }
+            )
         }
     }
 
