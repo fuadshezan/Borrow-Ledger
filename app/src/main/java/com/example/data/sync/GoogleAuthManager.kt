@@ -36,7 +36,11 @@ class GoogleAuthManager(private val context: Context) {
         val displayName = prefs.getString("user_name", "") ?: ""
         val photoUrl = prefs.getString("user_photo", "") ?: ""
         val accessToken = prefs.getString("access_token", "") ?: ""
-        val spreadsheetId = prefs.getString("spreadsheet_id", "") ?: ""
+        var spreadsheetId = prefs.getString("spreadsheet_id", "") ?: ""
+        if (spreadsheetId.startsWith("simulated_sheet_id") || spreadsheetId.startsWith("1LT_")) {
+            spreadsheetId = ""
+            prefs.edit().putString("spreadsheet_id", "").apply()
+        }
         val spreadsheetUrl = if (spreadsheetId.isNotBlank()) {
             "https://docs.google.com/spreadsheets/d/$spreadsheetId"
         } else {
@@ -59,13 +63,20 @@ class GoogleAuthManager(private val context: Context) {
         photoUrl: String = "",
         accessToken: String = ""
     ) {
-        val currentSpreadsheetId = prefs.getString("spreadsheet_id", "") ?: ""
+        val existingSpreadsheetId = prefs.getString("spreadsheet_id", "") ?: ""
+        val cleanedSpreadsheetId = if (existingSpreadsheetId.startsWith("simulated_sheet_id") || existingSpreadsheetId.startsWith("1LT_")) {
+            ""
+        } else {
+            existingSpreadsheetId
+        }
+
         prefs.edit()
             .putBoolean("is_signed_in", true)
             .putString("user_email", email)
             .putString("user_name", displayName)
             .putString("user_photo", photoUrl)
             .putString("access_token", accessToken)
+            .putString("spreadsheet_id", cleanedSpreadsheetId)
             .apply()
 
         _userState.value = GoogleUserState(
@@ -74,8 +85,8 @@ class GoogleAuthManager(private val context: Context) {
             displayName = displayName,
             photoUrl = photoUrl,
             accessToken = accessToken,
-            spreadsheetId = currentSpreadsheetId,
-            spreadsheetUrl = if (currentSpreadsheetId.isNotBlank()) "https://docs.google.com/spreadsheets/d/$currentSpreadsheetId" else ""
+            spreadsheetId = cleanedSpreadsheetId,
+            spreadsheetUrl = if (cleanedSpreadsheetId.isNotBlank()) "https://docs.google.com/spreadsheets/d/$cleanedSpreadsheetId" else ""
         )
     }
 

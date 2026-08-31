@@ -297,21 +297,27 @@ fun SettingsScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "Spreadsheet: Lending Tracker Database",
+                                            text = if (googleUser.spreadsheetId.isNotBlank()) "Spreadsheet: Connected" else "Spreadsheet: Not Linked",
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 13.sp
                                         )
                                         if (googleUser.spreadsheetId.isNotBlank()) {
                                             Text(
-                                                text = "ID: ${googleUser.spreadsheetId.take(18)}...",
+                                                text = "ID: ${googleUser.spreadsheetId.take(16)}...",
                                                 fontSize = 11.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = Color(0xFF10B981)
+                                            )
+                                        } else {
+                                            Text(
+                                                text = "Tap 'Link Sheet' to connect your Google Sheet",
+                                                fontSize = 11.sp,
+                                                color = Color(0xFFF59E0B)
                                             )
                                         }
                                     }
 
-                                    if (googleUser.spreadsheetUrl.isNotBlank()) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        if (googleUser.spreadsheetUrl.isNotBlank()) {
                                             IconButton(
                                                 onClick = {
                                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
@@ -351,6 +357,34 @@ fun SettingsScreen(
                                                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text("Open Sheet", fontSize = 11.sp)
+                                            }
+                                        }
+
+                                        if (googleUser.spreadsheetId.isNotBlank()) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    customSheetIdInput = googleUser.spreadsheetId
+                                                    showCustomSheetDialog = true
+                                                },
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Change Sheet", fontSize = 11.sp)
+                                            }
+                                        } else {
+                                            Button(
+                                                onClick = {
+                                                    customSheetIdInput = ""
+                                                    showCustomSheetDialog = true
+                                                },
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                            ) {
+                                                Icon(Icons.Default.CloudSync, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Link Sheet", fontSize = 11.sp)
                                             }
                                         }
                                     }
@@ -842,6 +876,80 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showResetConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Link Custom Google Sheet Dialog
+    if (showCustomSheetDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomSheetDialog = false },
+            title = { Text("Link Google Spreadsheet", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Your spreadsheet was automatically created and linked to your account. If you want to connect to a different custom Google Sheet instead, paste its link or ID below.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedButton(
+                        onClick = {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://sheets.new")).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Create New Sheet (sheets.new)", fontSize = 12.sp)
+                    }
+
+                    OutlinedTextField(
+                        value = customSheetIdInput,
+                        onValueChange = { customSheetIdInput = it },
+                        label = { Text("Google Sheet URL or ID") },
+                        placeholder = { Text("https://docs.google.com/spreadsheets/d/...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text(
+                        text = "Tip: Open your spreadsheet in browser, copy the full URL from address bar, and paste it here.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val raw = customSheetIdInput.trim()
+                                val afterD = when {
+                                    raw.contains("/spreadsheets/d/") -> raw.substringAfter("/spreadsheets/d/")
+                                    raw.contains("/d/") -> raw.substringAfter("/d/")
+                                    else -> raw
+                                }
+                                val extractedId = afterD.substringBefore("/").substringBefore("?").substringBefore("#").trim()
+
+                                if (extractedId.isNotBlank()) {
+                                    viewModel.saveCustomSpreadsheetId(extractedId)
+                                    showCustomSheetDialog = false
+                                }
+                            }
+                        ) {
+                            Text("Save & Link")
+                        }
+                    },
+            dismissButton = {
+                TextButton(onClick = { showCustomSheetDialog = false }) {
                     Text("Cancel")
                 }
             }
