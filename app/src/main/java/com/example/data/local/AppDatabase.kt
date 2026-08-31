@@ -8,19 +8,22 @@ import com.example.data.local.dao.LoanDao
 import com.example.data.local.dao.PaymentDao
 import com.example.data.local.dao.PersonDao
 import com.example.data.local.dao.ReminderDao
+import com.example.data.local.dao.SyncMetadataDao
 import com.example.data.local.entity.LoanEntity
 import com.example.data.local.entity.PaymentEntity
 import com.example.data.local.entity.PersonEntity
 import com.example.data.local.entity.ReminderEntity
+import com.example.data.local.entity.SyncMetadataEntity
 
 @Database(
     entities = [
         PersonEntity::class,
         LoanEntity::class,
         PaymentEntity::class,
-        ReminderEntity::class
+        ReminderEntity::class,
+        SyncMetadataEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun loanDao(): LoanDao
     abstract fun paymentDao(): PaymentDao
     abstract fun reminderDao(): ReminderDao
+    abstract fun syncMetadataDao(): SyncMetadataDao
 
     companion object {
         @Volatile

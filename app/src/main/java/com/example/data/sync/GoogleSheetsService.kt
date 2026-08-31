@@ -19,39 +19,46 @@ import java.util.concurrent.TimeUnit
 class GoogleSheetsService {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .writeTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(25, TimeUnit.SECONDS)
+        .readTimeout(25, TimeUnit.SECONDS)
+        .writeTimeout(25, TimeUnit.SECONDS)
         .build()
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
+    companion object {
+        const val SPREADSHEET_TITLE = "Lending Tracker Database"
+    }
+
     /**
-     * Finds an existing "Lending Tracker Database" spreadsheet or creates a new one.
+     * Finds an existing "Lending Tracker Database" spreadsheet in user's Google Drive or creates a new one.
+     * Ensures the required sheets ("People", "Loans", "Payments") exist in the spreadsheet.
      */
     suspend fun getOrCreateDatabaseSpreadsheet(
         accessToken: String,
         existingId: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            // 1. If we already have an ID, verify it exists and is accessible
+            // 1. Verify if the provided existingId is still valid and accessible
             if (!existingId.isNullOrBlank()) {
                 val verifyRequest = Request.Builder()
-                    .url("https://sheets.googleapis.com/v4/spreadsheets/$existingId?fields=spreadsheetId,properties.title")
+                    .url("https://sheets.googleapis.com/v4/spreadsheets/$existingId?fields=spreadsheetId,properties.title,sheets.properties")
                     .addHeader("Authorization", "Bearer $accessToken")
                     .get()
                     .build()
 
                 client.newCall(verifyRequest).execute().use { response ->
                     if (response.isSuccessful) {
+                        val body = response.body?.string() ?: ""
+                        ensureRequiredTabsExist(accessToken, existingId, body)
                         return@withContext Result.success(existingId)
                     }
                 }
             }
 
-            // 2. Search on Google Drive for an existing spreadsheet named "Lending Tracker Database"
-            val query = "name = 'Lending Tracker Database' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false"
-            val driveUrl = "https://www.googleapis.com/drive/v3/files?q=${java.net.URLEncoder.encode(query, "UTF-8")}&fields=files(id,name)"
+            // 2. Search on user's Google Drive for an existing spreadsheet named "Lending Tracker Database"
+            val query = "name = '$SPREADSHEET_TITLE' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false"
+            val driveUrl = "https://www.googleapis.com/drive/v3/files?q=${java.net.URLEncoder.encode(query, "UTF-8")}&fields=files(id,name)&spaces=drive"
 
             val searchRequest = Request.Builder()
                 .url(driveUrl)
@@ -66,35 +73,21 @@ class GoogleSheetsService {
                     val files = json.optJSONArray("files")
                     if (files != null && files.length() > 0) {
                         val fileId = files.getJSONObject(0).getString("id")
+                        ensureRequiredTabsExist(accessToken, fileId, null)
                         return@withContext Result.success(fileId)
                     }
                 }
             }
 
-            // 3. Create a brand new Spreadsheet with styled sheets (People, Loans, Payments)
+            // 3. Create a brand-new Spreadsheet with styled sheets (People, Loans, Payments)
             val createPayload = JSONObject().apply {
                 put("properties", JSONObject().apply {
-                    put("title", "Lending Tracker Database")
+                    put("title", SPREADSHEET_TITLE)
                 })
                 put("sheets", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("properties", JSONObject().apply {
-                            put("title", "People")
-                            put("gridProperties", JSONObject().apply { put("frozenRowCount", 1) })
-                        })
-                    })
-                    put(JSONObject().apply {
-                        put("properties", JSONObject().apply {
-                            put("title", "Loans")
-                            put("gridProperties", JSONObject().apply { put("frozenRowCount", 1) })
-                        })
-                    })
-                    put(JSONObject().apply {
-                        put("properties", JSONObject().apply {
-                            put("title", "Payments")
-                            put("gridProperties", JSONObject().apply { put("frozenRowCount", 1) })
-                        })
-                    })
+                    put(createSheetConfig("People", 0))
+                    put(createSheetConfig("Loans", 1))
+                    put(createSheetConfig("Payments", 2))
                 })
             }
 
@@ -111,11 +104,160 @@ class GoogleSheetsService {
                 }
                 val json = JSONObject(body)
                 val newId = json.getString("spreadsheetId")
+
+                // Apply professional styling to headers
+                applyHeaderFormatting(accessToken, newId)
+
                 Result.success(newId)
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun createSheetConfig(title: String, index: Int): JSONObject {
+        return JSONObject().apply {
+            put("properties", JSONObject().apply {
+                put("title", title)
+                put("index", index)
+                put("gridProperties", JSONObject().apply {
+                    put("frozenRowCount", 1)
+                })
+            })
+        }
+    }
+
+    /**
+     * Ensures all 3 tabs ("People", "Loans", "Payments") exist in the spreadsheet.
+     */
+    private fun ensureRequiredTabsExist(accessToken: String, spreadsheetId: String, existingBody: String?) {
+        try {
+            val json = if (existingBody != null) {
+                JSONObject(existingBody)
+            } else {
+                val req = Request.Builder()
+                    .url("https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId?fields=sheets.properties")
+                    .addHeader("Authorization", "Bearer $accessToken")
+                    .get()
+                    .build()
+                client.newCall(req).execute().use { res ->
+                    if (!res.isSuccessful) return
+                    JSONObject(res.body?.string() ?: "")
+                }
+            }
+
+            val sheets = json.optJSONArray("sheets") ?: return
+            val existingTitles = mutableSetOf<String>()
+            for (i in 0 until sheets.length()) {
+                val sheetProp = sheets.getJSONObject(i).optJSONObject("properties")
+                sheetProp?.optString("title")?.let { existingTitles.add(it) }
+            }
+
+            val required = listOf("People", "Loans", "Payments")
+            val missing = required.filter { it !in existingTitles }
+
+            if (missing.isNotEmpty()) {
+                val requestsArray = JSONArray()
+                missing.forEach { title ->
+                    requestsArray.put(JSONObject().apply {
+                        put("addSheet", JSONObject().apply {
+                            put("properties", JSONObject().apply {
+                                put("title", title)
+                                put("gridProperties", JSONObject().apply {
+                                    put("frozenRowCount", 1)
+                                })
+                            })
+                        })
+                    })
+                }
+
+                val batchPayload = JSONObject().apply {
+                    put("requests", requestsArray)
+                }
+
+                val batchReq = Request.Builder()
+                    .url("https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId:batchUpdate")
+                    .addHeader("Authorization", "Bearer $accessToken")
+                    .post(batchPayload.toString().toRequestBody(jsonMediaType))
+                    .build()
+
+                client.newCall(batchReq).execute().close()
+            }
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Applies styling (header background color, bold text, frozen row)
+     */
+    private fun applyHeaderFormatting(accessToken: String, spreadsheetId: String) {
+        try {
+            // Style header formatting via batchUpdate if possible
+            val req = Request.Builder()
+                .url("https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId?fields=sheets.properties")
+                .addHeader("Authorization", "Bearer $accessToken")
+                .get()
+                .build()
+
+            val sheetIds = mutableListOf<Int>()
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) return
+                val json = JSONObject(res.body?.string() ?: "")
+                val sheets = json.optJSONArray("sheets") ?: return
+                for (i in 0 until sheets.length()) {
+                    val props = sheets.getJSONObject(i).optJSONObject("properties")
+                    val sheetId = props?.optInt("sheetId", -1) ?: -1
+                    if (sheetId >= 0) {
+                        sheetIds.add(sheetId)
+                    }
+                }
+            }
+
+            val requestsArray = JSONArray()
+            sheetIds.forEach { sheetId ->
+                // Format header row (Row 0)
+                requestsArray.put(JSONObject().apply {
+                    put("repeatCell", JSONObject().apply {
+                        put("range", JSONObject().apply {
+                            put("sheetId", sheetId)
+                            put("startRowIndex", 0)
+                            put("endRowIndex", 1)
+                        })
+                        put("cell", JSONObject().apply {
+                            put("userEnteredFormat", JSONObject().apply {
+                                put("backgroundColor", JSONObject().apply {
+                                    put("red", 0.12)
+                                    put("green", 0.25)
+                                    put("blue", 0.55)
+                                })
+                                put("textFormat", JSONObject().apply {
+                                    put("foregroundColor", JSONObject().apply {
+                                        put("red", 1.0)
+                                        put("green", 1.0)
+                                        put("blue", 1.0)
+                                    })
+                                    put("bold", true)
+                                    put("fontSize", 11)
+                                })
+                            })
+                        })
+                        put("fields", "userEnteredFormat(backgroundColor,textFormat)")
+                    })
+                })
+            }
+
+            if (requestsArray.length() > 0) {
+                val batchPayload = JSONObject().apply {
+                    put("requests", requestsArray)
+                }
+                val batchReq = Request.Builder()
+                    .url("https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId:batchUpdate")
+                    .addHeader("Authorization", "Bearer $accessToken")
+                    .post(batchPayload.toString().toRequestBody(jsonMediaType))
+                    .build()
+
+                client.newCall(batchReq).execute().close()
+            }
+        } catch (_: Exception) {}
     }
 
     /**
@@ -129,6 +271,8 @@ class GoogleSheetsService {
         payments: List<PaymentEntity>
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            ensureRequiredTabsExist(accessToken, spreadsheetId, null)
+
             // 1. Prepare People Sheet Data
             val peopleRows = mutableListOf<List<Any>>()
             peopleRows.add(
@@ -187,7 +331,6 @@ class GoogleSheetsService {
             }
 
             // 3. Prepare Payments Sheet Data
-            val personMap = people.associateBy { it.id }
             val loanMap = loans.associateBy { it.id }
             val paymentRows = mutableListOf<List<Any>>()
             paymentRows.add(
@@ -218,6 +361,8 @@ class GoogleSheetsService {
             clearAndWriteRange(accessToken, spreadsheetId, "Loans!A1:Z500", loanRows)
             clearAndWriteRange(accessToken, spreadsheetId, "Payments!A1:Z500", paymentRows)
 
+            applyHeaderFormatting(accessToken, spreadsheetId)
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -237,7 +382,9 @@ class GoogleSheetsService {
             .addHeader("Authorization", "Bearer $accessToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
-        client.newCall(clearReq).execute().close()
+        try {
+            client.newCall(clearReq).execute().close()
+        } catch (_: Exception) {}
 
         // Step B: Write new values
         val updateUrl = "https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/${range.substringBefore(':')}?valueInputOption=USER_ENTERED"
@@ -278,7 +425,6 @@ class GoogleSheetsService {
         spreadsheetId: String
     ): Result<Triple<List<PersonEntity>, List<LoanEntity>, List<PaymentEntity>>> = withContext(Dispatchers.IO) {
         try {
-            // Read People!A2:K500
             val people = readPeopleSheet(accessToken, spreadsheetId)
             val loans = readLoansSheet(accessToken, spreadsheetId)
             val payments = readPaymentsSheet(accessToken, spreadsheetId)

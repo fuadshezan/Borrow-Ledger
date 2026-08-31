@@ -39,23 +39,34 @@ class NetworkMonitor(private val context: Context) {
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
 
-        connectivityManager?.registerNetworkCallback(request, callback)
+        try {
+            connectivityManager?.registerNetworkCallback(request, callback)
+        } catch (e: Exception) {
+            // If callback registration fails (e.g. security policy), provide initial state fallback
+            trySend(checkCurrentOnline())
+        }
 
         // Initial check
         val currentOnline = checkCurrentOnline()
         trySend(currentOnline)
 
         awaitClose {
-            connectivityManager?.unregisterNetworkCallback(callback)
+            try {
+                connectivityManager?.unregisterNetworkCallback(callback)
+            } catch (_: Exception) {}
         }
     }.distinctUntilChanged()
 
     fun isCurrentlyOnline(): Boolean = checkCurrentOnline()
 
     private fun checkCurrentOnline(): Boolean {
-        val cm = connectivityManager ?: return false
-        val activeNetwork = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(activeNetwork) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        return try {
+            val cm = connectivityManager ?: return false
+            val activeNetwork = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(activeNetwork) ?: return false
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (e: Exception) {
+            false
+        }
     }
 }
