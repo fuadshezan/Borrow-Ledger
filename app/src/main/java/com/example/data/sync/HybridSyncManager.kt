@@ -137,101 +137,73 @@ class HybridSyncManager(
                 return@launch
             }
 
+            // Fetch local data from Room
+            val people = repository.allPeopleSummaries.first()
+            val loans = repository.allLoansWithDetails.first()
+            val payments = db.paymentDao().getAllPayments().first()
+
             if (!networkMonitor.isCurrentlyOnline()) {
                 _syncStatus.value = SyncStatus.OFFLINE_QUEUED
-                _statusMessage.value = "Device is offline. Changes stored safely in local database."
-                onResult(false, "Device is offline. Changes stored safely.")
+                _statusMessage.value = "Data saved locally on device (${people.size} people, ${loans.size} loans). Device is offline."
+                onResult(false, "Data saved locally. Cloud sync pending internet connection.")
+                return@launch
+            }
+
+            val sheetId = user.spreadsheetId.trim()
+            if (sheetId.isBlank()) {
+                _syncStatus.value = SyncStatus.ERROR
+                _statusMessage.value = "Data saved locally on device. No Google Sheet linked yet."
+                onResult(false, "Data saved locally on device. Please link a Google Sheet.")
                 return@launch
             }
 
             _syncStatus.value = SyncStatus.SYNCING
-            _statusMessage.value = "Connecting to Google Drive & Sheets..."
+            _statusMessage.value = "Syncing with Google Sheet (${sheetId.take(12)}...)"
 
             try {
-                // 1. Obtain a fresh / valid OAuth Access Token
-                var token = authManager.getOrRefreshAccessToken(forceRefresh = false)
-                if (token.isNullOrBlank()) {
-                    token = authManager.getOrRefreshAccessToken(forceRefresh = true)
-                }
-
-                if (token.isNullOrBlank()) {
-                    _syncStatus.value = SyncStatus.ERROR
-                    val errMsg = "Google OAuth authorization required. Please reconnect your Google account in Settings."
-                    _statusMessage.value = errMsg
-                    onResult(false, errMsg)
-                    return@launch
-                }
-
-                // 2. Find or create the Google Spreadsheet on user's Google Drive
-                // If existing sheet is not found/deleted, a brand-new sheet is automatically created.
-                val sheetResult = sheetsService.getOrCreateDatabaseSpreadsheet(
-                    accessToken = token,
-                    existingId = user.spreadsheetId.ifBlank { null }
-                )
-
-                if (sheetResult.isFailure) {
-                    val err = sheetResult.exceptionOrNull()?.message ?: "Could not access Google Sheets"
-                    _syncStatus.value = SyncStatus.ERROR
-                    _statusMessage.value = err
-                    onResult(false, err)
-                    return@launch
-                }
-
-                val sheetId = sheetResult.getOrThrow()
-                val sheetUrl = "https://docs.google.com/spreadsheets/d/$sheetId"
-
-                // 3. Persist sheet metadata both in memory/Prefs and in local Room DB table
-                authManager.saveSpreadsheetId(sheetId)
-                try {
-                    db.syncMetadataDao().saveMetadata(
-                        SyncMetadataEntity(
-                            key = "active_spreadsheet",
-                            spreadsheetId = sheetId,
-                            spreadsheetUrl = sheetUrl,
-                            spreadsheetTitle = GoogleSheetsService.SPREADSHEET_TITLE,
-                            userEmail = user.email,
-                            lastSyncedAt = System.currentTimeMillis()
-                        )
+                // If accessToken is present, try uploading to Google Sheet
+                if (user.accessToken.isNotBlank()) {
+                    val uploadResult = sheetsService.syncAllDataToSheet(
+                        accessToken = user.accessToken,
+                        spreadsheetId = sheetId,
+                        people = people,
+                        loans = loans,
+                        payments = payments
                     )
-                } catch (_: Exception) {}
 
-                // 4. Fetch local Room DB state
-                val people = repository.allPeopleSummaries.first()
-                val loans = repository.allLoansWithDetails.first()
-                val payments = db.paymentDao().getAllPayments().first()
+                    if (uploadResult.isSuccess) {
+                        val now = System.currentTimeMillis()
+                        _lastSyncTime.value = now
+                        _pendingChangesCount.value = 0
+                        prefs.edit()
+                            .putLong("last_sync_time", now)
+                            .putInt("pending_changes", 0)
+                            .apply()
 
-                // 5. Upload to Google Sheets (People, Loans, Payments)
-                val uploadResult = sheetsService.syncAllDataToSheet(
-                    accessToken = token,
-                    spreadsheetId = sheetId,
-                    people = people,
-                    loans = loans,
-                    payments = payments
-                )
-
-                if (uploadResult.isFailure) {
-                    val err = uploadResult.exceptionOrNull()?.message ?: "Upload to Google Sheet failed"
+                        _syncStatus.value = SyncStatus.SUCCESS
+                        _statusMessage.value = "Successfully synced ${people.size} people, ${loans.size} loans with Google Sheet!"
+                        onResult(true, "Successfully synced with Google Sheet!")
+                    } else {
+                        val rawErr = uploadResult.exceptionOrNull()?.message ?: "Unknown error"
+                        val userFriendlyErr = when {
+                            rawErr.contains("401") || rawErr.contains("403") ->
+                                "Google Sheets authorization needed or token expired"
+                            rawErr.contains("404") ->
+                                "Spreadsheet ID not found on Google Drive"
+                            else -> rawErr
+                        }
+                        _syncStatus.value = SyncStatus.ERROR
+                        _statusMessage.value = "Data saved locally on device, but failed to sync to Google Sheet ($userFriendlyErr)"
+                        onResult(false, "Data saved locally, but cloud sync to Sheet failed: $userFriendlyErr")
+                    }
+                } else {
                     _syncStatus.value = SyncStatus.ERROR
-                    _statusMessage.value = err
-                    onResult(false, err)
-                    return@launch
+                    _statusMessage.value = "Data saved locally on device. Google Sheet authorization required."
+                    onResult(false, "Data saved locally on device. Please sign in with Google to enable cloud sync.")
                 }
-
-                // 6. Update success sync state
-                val now = System.currentTimeMillis()
-                _lastSyncTime.value = now
-                _pendingChangesCount.value = 0
-                prefs.edit()
-                    .putLong("last_sync_time", now)
-                    .putInt("pending_changes", 0)
-                    .apply()
-
-                _syncStatus.value = SyncStatus.SUCCESS
-                _statusMessage.value = "Synced ${people.size} people, ${loans.size} loans with Google Drive ✓"
-                onResult(true, "Successfully synced with Google Sheet!")
             } catch (e: Exception) {
                 _syncStatus.value = SyncStatus.ERROR
-                val msg = e.message ?: "Failed to sync"
+                val msg = "Data saved locally on device, but sync failed: ${e.message ?: "Network error"}"
                 _statusMessage.value = msg
                 onResult(false, msg)
             }

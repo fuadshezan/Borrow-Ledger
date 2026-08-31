@@ -271,7 +271,15 @@ class GoogleSheetsService {
         payments: List<PaymentEntity>
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            ensureRequiredTabsExist(accessToken, spreadsheetId, null)
+            if (accessToken.isBlank()) {
+                return@withContext Result.failure(Exception("Google OAuth token is missing"))
+            }
+            if (spreadsheetId.isBlank()) {
+                return@withContext Result.failure(Exception("No Google Spreadsheet ID linked"))
+            }
+
+            // Step 0: Ensure required sheet tabs (People, Loans, Payments) exist
+            ensureRequiredSheetsExist(accessToken, spreadsheetId)
 
             // 1. Prepare People Sheet Data
             val peopleRows = mutableListOf<List<Any>>()
@@ -369,6 +377,72 @@ class GoogleSheetsService {
         }
     }
 
+    private fun ensureRequiredSheetsExist(accessToken: String, spreadsheetId: String) {
+        try {
+            val metaUrl = "https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId?fields=sheets.properties"
+            val req = Request.Builder()
+                .url(metaUrl)
+                .addHeader("Authorization", "Bearer $accessToken")
+                .get()
+                .build()
+
+            client.newCall(req).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val body = response.body?.string() ?: ""
+                    throw Exception("HTTP ${response.code}: $body")
+                }
+                val bodyStr = response.body?.string() ?: ""
+                val json = JSONObject(bodyStr)
+                val sheets = json.optJSONArray("sheets") ?: JSONArray()
+                val existingTitles = mutableSetOf<String>()
+                for (i in 0 until sheets.length()) {
+                    val prop = sheets.getJSONObject(i).optJSONObject("properties")
+                    val title = prop?.optString("title")
+                    if (!title.isNullOrBlank()) {
+                        existingTitles.add(title)
+                    }
+                }
+
+                val needed = listOf("People", "Loans", "Payments").filter { it !in existingTitles }
+                if (needed.isNotEmpty()) {
+                    val requests = JSONArray()
+                    needed.forEach { name ->
+                        requests.put(
+                            JSONObject().apply {
+                                put("addSheet", JSONObject().apply {
+                                    put("properties", JSONObject().apply {
+                                        put("title", name)
+                                        put("gridProperties", JSONObject().apply {
+                                            put("frozenRowCount", 1)
+                                        })
+                                    })
+                                })
+                            }
+                        )
+                    }
+                    val batchUrl = "https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId:batchUpdate"
+                    val batchPayload = JSONObject().apply {
+                        put("requests", requests)
+                    }
+                    val batchReq = Request.Builder()
+                        .url(batchUrl)
+                        .addHeader("Authorization", "Bearer $accessToken")
+                        .post(batchPayload.toString().toRequestBody(jsonMediaType))
+                        .build()
+
+                    client.newCall(batchReq).execute().use { batchRes ->
+                        if (!batchRes.isSuccessful) {
+                            val err = batchRes.body?.string() ?: ""
+                            throw Exception("Failed to create tabs: HTTP ${batchRes.code} $err")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
     private fun clearAndWriteRange(
         accessToken: String,
         spreadsheetId: String,
@@ -382,9 +456,12 @@ class GoogleSheetsService {
             .addHeader("Authorization", "Bearer $accessToken")
             .post("{}".toRequestBody(jsonMediaType))
             .build()
-        try {
-            client.newCall(clearReq).execute().close()
-        } catch (_: Exception) {}
+        client.newCall(clearReq).execute().use { clearRes ->
+            if (!clearRes.isSuccessful) {
+                val err = clearRes.body?.string() ?: ""
+                throw Exception("Failed to clear $range: HTTP ${clearRes.code} $err")
+            }
+        }
 
         // Step B: Write new values
         val updateUrl = "https://sheets.googleapis.com/v4/spreadsheets/$spreadsheetId/values/${range.substringBefore(':')}?valueInputOption=USER_ENTERED"

@@ -59,26 +59,31 @@ class GoogleAuthManager(private val context: Context) {
     private val _userState = MutableStateFlow(loadUserState())
     val userState: StateFlow<GoogleUserState> = _userState.asStateFlow()
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Sign-In
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Builds the Google Sign-In intent that launches the system account picker.
-     * Requests the Google ID token (for Firebase auth), profile, and Google Sheets + Drive scopes.
-     */
-    fun buildSignInIntent(): Intent {
-        val serverClientId = getWebClientId()
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(serverClientId)
-            .requestEmail()
-            .requestProfile()
-            .requestScopes(
-                Scope(OAUTH_SCOPES[0]),  // spreadsheets
-                Scope(OAUTH_SCOPES[1])   // drive.file
-            )
-            .build()
-        return GoogleSignIn.getClient(context, gso).signInIntent
+    private fun loadUserState(): GoogleUserState {
+        val isSignedIn = prefs.getBoolean("is_signed_in", false)
+        val email = prefs.getString("user_email", "") ?: ""
+        val displayName = prefs.getString("user_name", "") ?: ""
+        val photoUrl = prefs.getString("user_photo", "") ?: ""
+        val accessToken = prefs.getString("access_token", "") ?: ""
+        var spreadsheetId = prefs.getString("spreadsheet_id", "") ?: ""
+        if (spreadsheetId.startsWith("simulated_sheet_id") || spreadsheetId.startsWith("1LT_")) {
+            spreadsheetId = ""
+            prefs.edit().putString("spreadsheet_id", "").apply()
+        }
+        val spreadsheetUrl = if (spreadsheetId.isNotBlank()) {
+            "https://docs.google.com/spreadsheets/d/$spreadsheetId"
+        } else {
+            ""
+        }
+        return GoogleUserState(
+            isSignedIn = isSignedIn,
+            email = email,
+            displayName = displayName,
+            photoUrl = photoUrl,
+            accessToken = accessToken,
+            spreadsheetId = spreadsheetId,
+            spreadsheetUrl = spreadsheetUrl
+        )
     }
 
     /**
@@ -213,13 +218,20 @@ class GoogleAuthManager(private val context: Context) {
         photoUrl: String = "",
         accessToken: String = ""
     ) {
-        val currentSpreadsheetId = prefs.getString("spreadsheet_id", "") ?: ""
+        val existingSpreadsheetId = prefs.getString("spreadsheet_id", "") ?: ""
+        val cleanedSpreadsheetId = if (existingSpreadsheetId.startsWith("simulated_sheet_id") || existingSpreadsheetId.startsWith("1LT_")) {
+            ""
+        } else {
+            existingSpreadsheetId
+        }
+
         prefs.edit()
             .putBoolean("is_signed_in", true)
             .putString("user_email", email)
             .putString("user_name", displayName)
             .putString("user_photo", photoUrl)
             .putString("access_token", accessToken)
+            .putString("spreadsheet_id", cleanedSpreadsheetId)
             .apply()
 
         _userState.value = GoogleUserState(
@@ -228,8 +240,8 @@ class GoogleAuthManager(private val context: Context) {
             displayName = displayName,
             photoUrl = photoUrl,
             accessToken = accessToken,
-            spreadsheetId = currentSpreadsheetId,
-            spreadsheetUrl = spreadsheetUrl(currentSpreadsheetId)
+            spreadsheetId = cleanedSpreadsheetId,
+            spreadsheetUrl = if (cleanedSpreadsheetId.isNotBlank()) "https://docs.google.com/spreadsheets/d/$cleanedSpreadsheetId" else ""
         )
     }
 
